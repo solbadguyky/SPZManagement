@@ -3,7 +3,6 @@ package solstudios.app.spzmanagement;
 import android.database.sqlite.SQLiteException;
 
 import com.orm.SugarRecord;
-import com.orm.dsl.Ignore;
 import com.orm.dsl.Unique;
 
 import java.util.ArrayList;
@@ -14,54 +13,77 @@ import java.util.ArrayList;
 public class ChannelRecord extends SugarRecord {
     public static final String TAB = "ChannelRecord";
 
+
     @Unique
     long channelId;
 
     String channelName;
 
-    @Ignore
-    String[] channelEvents;
+    String channelEvents;
 
     public ChannelRecord() {
 
     }
 
-    public ChannelRecord(long id, String name, String[] channelEvents) {
+    public ChannelRecord(long id, String name, String channelEvents) {
         this.channelId = id;
         this.channelName = name;
         this.channelEvents = channelEvents;
     }
 
-    public static void saveAllRecords() throws SQLiteException {
+    /**
+     * Lưu lại tất cả các channels records hiện có
+     *
+     * @return true nếu như không có lỗi gì xảy ra
+     * @throws SQLiteException Nếu có sự cố về DB
+     */
+    public static boolean saveAllRecords() throws SQLiteException {
         try {
-            ChannelRecord maskChannelRecord = ChannelRecord.findById(ChannelRecord.class, 1);
+            ChannelRecord.findById(ChannelRecord.class, 1);
         } catch (SQLiteException e) {
-            new Throwable("Table not found");
             ChannelRecord maskchannelRecord = new ChannelRecord();
             maskchannelRecord.channelId = -1;
             maskchannelRecord.channelName = "Mask Channel";
-            maskchannelRecord.channelEvents = new String[]{};
+            maskchannelRecord.channelEvents = "Mask Event";
             maskchannelRecord.save();
+            return false;
         }
 
         ArrayList<Channel> channels = ChannelStack.getInstance();
-        //String queryString = "SELECT * FROM " + TAB_ITEM + " WHERE "
-        //        + COL_NOTI_ID + " =? ";
         if (ChannelRecord.isSugarEntity(ChannelRecord.class)) {
             for (Channel channel : channels) {
                 if (ChannelRecord.find(ChannelRecord.class, "CHANNEL_ID = ?", new String[]{channel.getChannelName()}).size() > 0) {
                     new LogTask("Dettect ", TAB, LogTask.LOG_D);
+                    updateRecord(channel);
                 } else {
                     new LogTask("New ", TAB, LogTask.LOG_D);
-
+                    saveRecord(channel);
                 }
             }
 
         } else {
             new LogTask("Error ", TAB, LogTask.LOG_D);
-
+            return false;
         }
+        return true;
 
+    }
 
+    public static void saveRecord(Channel channel) {
+        if (ChannelRecord.isSugarEntity(ChannelRecord.class)) {
+            ChannelRecord newchannelRecord = new ChannelRecord();
+            newchannelRecord.channelId = channel.getChannelId();
+            newchannelRecord.channelName = channel.getChannelName();
+            newchannelRecord.channelEvents = channel.getEventsString();
+            newchannelRecord.save();
+        }
+    }
+
+    public static void updateRecord(Channel channel) {
+        ChannelRecord newchannelRecord = new ChannelRecord();
+        newchannelRecord.channelId = channel.getChannelId();
+        newchannelRecord.channelName = channel.getChannelName();
+        newchannelRecord.channelEvents = channel.getEventsString();
+        newchannelRecord.update();
     }
 }

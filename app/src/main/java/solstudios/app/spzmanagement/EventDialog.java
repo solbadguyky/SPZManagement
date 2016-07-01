@@ -3,6 +3,7 @@ package solstudios.app.spzmanagement;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.DialogFragment;
+import android.content.DialogInterface;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.view.LayoutInflater;
@@ -47,7 +48,14 @@ public class EventDialog extends DialogFragment {
         View customView = layoutInflater.inflate(R.layout.event_dialog, null);
         alertDialogBuild.setView(customView);
         alertDialogBuild.setTitle(channel.getChannelName());
+        alertDialogBuild.setMessage("Click Single Row To View Debug Message.Long Click to Delete Event");
 
+        alertDialogBuild.setPositiveButton("Delete Channel (All Events Will be Deleted)", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+
+            }
+        });
         ListView listView = (ListView) customView.findViewById(R.id.event_diaglog_listView);
 
         ArrayList<String> eventsString = new ArrayList<>();

@@ -9,6 +9,7 @@ import java.util.ArrayList;
 public class Channel implements Serializable {
     public static final String TAB = "Channel";
 
+    private long channelId = -1;
     private String channelName;
     private ArrayList<Event> events;
 
@@ -18,6 +19,23 @@ public class Channel implements Serializable {
 
     public Channel(String channelName) {
         this.channelName = channelName;
+    }
+
+    public long getChannelId() {
+        if (channelId == -1) {
+            if (channelName != null && !channelName.isEmpty()) {
+                return toHash(channelName);
+            }
+        }
+        return this.channelId;
+    }
+
+    public void setChannelId(long id) {
+        this.channelId = id;
+    }
+
+    private long toHash(String src) {
+        return src.hashCode();
     }
 
     boolean addEvent(Event event) {
@@ -36,12 +54,30 @@ public class Channel implements Serializable {
         return false;
     }
 
+    public String getChannelName() {
+        return this.channelName;
+    }
+
     void setChannelName(String channelName) {
         this.channelName = channelName;
     }
 
-    public String getChannelName() {
-        return this.channelName;
+    public String[] getEventsArray() {
+        ArrayList<String> eventsString = new ArrayList<>();
+        for (Channel.Event event : getEvents()) {
+            eventsString.add(event.getEventName().toString());
+        }
+        String[] eventArr = new String[eventsString.size()];
+        eventsString.toArray(eventArr);
+        return eventArr;
+    }
+
+    public String getEventsString() {
+        String eventsString = new String();
+        for (Channel.Event event : getEvents()) {
+            eventsString += (event.getEventName() + ",");
+        }
+        return eventsString;
     }
 
     public ArrayList<Event> getEvents() {
@@ -55,12 +91,12 @@ public class Channel implements Serializable {
             this.eventName = eventName;
         }
 
-        public void setEventName(String eventName) {
-            this.eventName = eventName;
-        }
-
         public String getEventName() {
             return this.eventName;
+        }
+
+        public void setEventName(String eventName) {
+            this.eventName = eventName;
         }
     }
 }
