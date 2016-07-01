@@ -1,13 +1,12 @@
 package solstudios.app.spzmanagement.pusher;
 
-import com.pusher.client.Pusher;
-import com.pusher.client.PusherOptions;
-import com.pusher.client.connection.ConnectionState;
-import com.pusher.client.util.HttpAuthorizer;
-
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
+
+import com.pusher.client.Pusher;
+import com.pusher.client.PusherOptions;
+import com.pusher.client.connection.ConnectionState;
 
 import solstudios.app.spzmanagement.LogTask;
 

@@ -6,8 +6,6 @@ import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.widget.Toast;
 
-import solstudios.app.spzmanagement.Channel.Event;
-
 import com.pusher.client.Pusher;
 import com.pusher.client.channel.Channel;
 import com.pusher.client.channel.SubscriptionEventListener;
@@ -52,14 +50,13 @@ public class PusherHelper {
     public static final String DEFAULT_CLIENT_TESTEVENT = "test_event";
 
     public static final long MAXIMUM_PUSHER_WAITING_TIME = 1800000;
-
+    boolean isOverrideDefaultSettings;
     private Context context;
     private NotificationHelper notificationHelper;
     private PusherConnectionListener pusherListener;
     private SharedPreferences sharedPreferences;
     private String pusherChannel, pusherEvent;
     private Pusher pusher;
-    boolean isOverrideDefaultSettings;
 
     public PusherHelper(Context context) {
         pusher = PusherClientInstance.INSTANCE.getInstance(context, false);

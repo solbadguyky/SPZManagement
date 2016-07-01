@@ -1,36 +1,18 @@
 package solstudios.app.spzmanagement.pusher;
 
-import java.io.IOException;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.Random;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.concurrent.TimeUnit;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import android.app.Activity;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.SharedPreferences.Editor;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.media.RingtoneManager;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Build;
-import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v4.app.NotificationCompat;
-import android.support.v7.app.AlertDialog;
+
+import org.json.JSONObject;
 
 import solstudios.app.spzmanagement.LogTask;
 
@@ -75,14 +57,6 @@ public class NotificationHelper {
                 PusherHelper.DEFAULT_CLIENT_EVENT);
     }
 
-    public interface NotifcationInterface {
-        void onProcessPusherItem(NotificationItem rawItem);
-
-        void Completed(NotificationItem processedItem);
-
-        void Error(NotificationItem item);
-    }
-
     public void addOnNotificationListener(NotifcationInterface listener) {
         this.notificationListener = listener;
     }
@@ -113,7 +87,6 @@ public class NotificationHelper {
         }
         return null;
     }
-
 
     public void showNotification(NotificationItem notificationItem) {
         if (notificationItem != null) {
@@ -207,6 +180,14 @@ public class NotificationHelper {
                 context.getApplicationContext(), (int) notificationItem.getItem().itemid,
                 intent, PendingIntent.FLAG_UPDATE_CURRENT);
         return pendingIntent;
+    }
+
+    public interface NotifcationInterface {
+        void onProcessPusherItem(NotificationItem rawItem);
+
+        void Completed(NotificationItem processedItem);
+
+        void Error(NotificationItem item);
     }
 
 }

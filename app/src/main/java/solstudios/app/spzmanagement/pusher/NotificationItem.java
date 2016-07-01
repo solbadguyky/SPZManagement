@@ -1,21 +1,17 @@
 package solstudios.app.spzmanagement.pusher;
 
 import java.io.Serializable;
-import java.util.Calendar;
 
 public class NotificationItem implements Serializable {
 
+    public static final String TAB = "NotificationItem";
+    public static final int PRIOR_LOW = 1;
+    public static final int PRIOR_NORMAL = 2;
+    public static final int PRIOR_HIGH = 3;
     /**
      *
      */
     private static final long serialVersionUID = 1L;
-
-    public static final String TAB = "NotificationItem";
-
-    public static final int PRIOR_LOW = 1;
-    public static final int PRIOR_NORMAL = 2;
-    public static final int PRIOR_HIGH = 3;
-
     private Item item;
     private Object tag;
 
@@ -40,13 +36,13 @@ public class NotificationItem implements Serializable {
         this.tag = tag;
     }
 
+    public Item getItem() {
+        return this.item;
+    }
+
     public class Item implements Serializable {
         public long itemid;
         public String title, summary, user, url;
-    }
-
-    public Item getItem(){
-        return this.item;
     }
 
 }
