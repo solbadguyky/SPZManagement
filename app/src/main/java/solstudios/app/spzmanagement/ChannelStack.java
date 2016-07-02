@@ -1,18 +1,48 @@
 package solstudios.app.spzmanagement;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 
 /**
  * Created by solbadguyky on 6/30/16.
  */
 public class ChannelStack extends ArrayList<Channel> {
+    public static final String TAB = "ChannelStack";
     private static ChannelStack mChannelStackInstance = null;
+
+    public ChannelStack() {
+        getAllRecords();
+    }
 
     public static synchronized ChannelStack getInstance() {
         if (null == mChannelStackInstance) {
             mChannelStackInstance = new ChannelStack();
         }
         return mChannelStackInstance;
+    }
+
+    private void getAllRecords() {
+        ArrayList<Channel> channelArrayList = new ArrayList<>();
+        ArrayList<ChannelRecord> channelRecords = (ArrayList<ChannelRecord>) ChannelRecord.listAll(ChannelRecord.class);
+        if (this.isEmpty()) {
+            for (ChannelRecord record : channelRecords) {
+                Channel channel = new Channel();
+                channel.setChannelName(record.channelName);
+                channel.setChannelId(record.channelId);
+
+                try {
+                    JSONObject jsonObject = new JSONObject(record.channelEvents);
+                    channel.setEventList(MySqliteHelper.getEventsFromJSONObject(jsonObject));
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                    channel.setEventList(new ArrayList<Channel.Event>());
+                }
+                channelArrayList.add(channel);
+            }
+        }
+        this.addAll(channelArrayList);
     }
 
     /**
@@ -62,6 +92,40 @@ public class ChannelStack extends ArrayList<Channel> {
         return maskChannel;
     }
 
+    public boolean removeEvent(Channel channel, Channel.Event event) {
+        new LogTask("removeEvent|channel:" + channel + ",event:" + event, TAB, LogTask.LOG_D);
+        if (contains(channel)) {
+            Channel maskChannel = get(indexOf(channel));
+            if (maskChannel.getEvents().contains(event)) {
+                ArrayList<Channel.Event> eventArrayList = maskChannel.getEvents();
+                if (eventArrayList.remove(event)) {
+                    return true;
+                } else {
+                    ///tìm xem có event nào cùng tên không
+                    for (Channel.Event childEvent : eventArrayList) {
+                        if (childEvent.getChannelName().equals(event.getEventName())) {
+                            return true;
+                        }
+                    }
+                }
+            } else {
+                ///không có event cần tìm
+                return false;
+            }
+        } else {
+            /// không có channel cần tìm
+            return false;
+        }
+        ///catch all events
+        return false;
+    }
+
+    public void checkNullChannel(Channel channel) {
+        if (channel.getEvents() == null) {
+            remove(channel);
+        }
+    }
+
     /**
      * Tìm ra vị trí, nơi mà channel mới cùng tên với một channel cũ
      *
@@ -88,5 +152,9 @@ public class ChannelStack extends ArrayList<Channel> {
 
         }
         return false;
+    }
+
+    public interface IChannelStack {
+        void onItemChanged();
     }
 }

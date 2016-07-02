@@ -3,29 +3,29 @@ package solstudios.app.spzmanagement;
 import android.database.sqlite.SQLiteException;
 
 import com.orm.SugarRecord;
+import com.orm.dsl.NotNull;
 import com.orm.dsl.Unique;
 
 import java.util.ArrayList;
+import java.util.List;
 
 /**
+ * Quản lí dữ liệu các channel được lưu trên app
  * Created by solbadguyky on 7/1/16.
  */
 public class ChannelRecord extends SugarRecord {
     public static final String TAB = "ChannelRecord";
-
-
     @Unique
-    long channelId;
-
+    @NotNull
+    int channelId;
     String channelName;
-
     String channelEvents;
 
     public ChannelRecord() {
 
     }
 
-    public ChannelRecord(long id, String name, String channelEvents) {
+    public ChannelRecord(int id, String name, String channelEvents) {
         this.channelId = id;
         this.channelName = name;
         this.channelEvents = channelEvents;
@@ -54,10 +54,10 @@ public class ChannelRecord extends SugarRecord {
             for (Channel channel : channels) {
                 if (ChannelRecord.find(ChannelRecord.class, "CHANNEL_ID = ?", new String[]{channel.getChannelName()}).size() > 0) {
                     new LogTask("Dettect ", TAB, LogTask.LOG_D);
-                    updateRecord(channel);
+                    return updateRecord(channel);
                 } else {
                     new LogTask("New ", TAB, LogTask.LOG_D);
-                    saveRecord(channel);
+                    return saveRecord(channel);
                 }
             }
 
@@ -69,21 +69,122 @@ public class ChannelRecord extends SugarRecord {
 
     }
 
-    public static void saveRecord(Channel channel) {
+    /**
+     * Lưu channel mới vào DB
+     *
+     * @param channel
+     * @return true nếu channel được thêm vào thành công
+     */
+    public static boolean saveRecord(Channel channel) {
         if (ChannelRecord.isSugarEntity(ChannelRecord.class)) {
             ChannelRecord newchannelRecord = new ChannelRecord();
             newchannelRecord.channelId = channel.getChannelId();
             newchannelRecord.channelName = channel.getChannelName();
             newchannelRecord.channelEvents = channel.getEventsString();
-            newchannelRecord.save();
+            try {
+                newchannelRecord.channelEvents = MySqliteHelper.convertArrayToJSONObject(channel.getEvents()).toString();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            if (newchannelRecord.save() > 0) {
+                return true;
+            } else return false;
         }
+
+        return false;
     }
 
-    public static void updateRecord(Channel channel) {
-        ChannelRecord newchannelRecord = new ChannelRecord();
-        newchannelRecord.channelId = channel.getChannelId();
-        newchannelRecord.channelName = channel.getChannelName();
-        newchannelRecord.channelEvents = channel.getEventsString();
-        newchannelRecord.update();
+    /**
+     * Cập nhật channel đã tồn tại
+     *
+     * @param channel
+     * @return true nếu như channel được cập nhật thành công
+     */
+    public static boolean updateRecord(Channel channel) {
+        new LogTask("updateRecord|channel:" + channel, TAB, LogTask.LOG_I);
+        if (ChannelRecord.isSugarEntity(ChannelRecord.class)) {
+            ChannelRecord newchannelRecord = new ChannelRecord();
+            newchannelRecord.channelId = channel.getChannelId();
+            newchannelRecord.channelName = channel.getChannelName();
+
+            newchannelRecord.channelEvents = channel.getEventsString();
+
+            try {
+                newchannelRecord.channelEvents = MySqliteHelper.convertArrayToJSONObject(channel.getEvents()).toString();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            if (newchannelRecord.update() > 0) return true;
+            else return false;
+        }
+        return false;
+    }
+
+    /**
+     * Xóa event trong channel
+     *
+     * @param channel
+     * @param event
+     * @return
+     * @throws SQLiteException
+     */
+    public static boolean deleteEvent(Channel channel, Channel.Event event) throws SQLiteException {
+        new LogTask("deleteEvent|channel:" + channel + ",event:" + event, TAB, LogTask.LOG_I);
+        if (ChannelRecord.isSugarEntity(ChannelRecord.class)) {
+            List<ChannelRecord> recordList = ChannelRecord.find(
+                    ChannelRecord.class, " CHANNEL_ID = ?", String.valueOf(channel.getChannelId()));
+            if (recordList.size() > 0) {
+                for (ChannelRecord record : recordList) {
+                    new LogTask("deleteEvent|channelid:" + record.channelId + ",channelName:" + record.channelName, TAB, LogTask.LOG_D);
+                    new LogTask("deleteEvent|events:" + record.channelEvents, TAB, LogTask.LOG_D);
+                    new LogTask("deleteEvent|selected_event:" + event.getEventName(), TAB, LogTask.LOG_D);
+
+                    channel.removeEventByName(event.getEventName());
+                    if (channel.getEvents().size() > 0) {
+                        updateRecord(channel);
+                    } else {
+                        deleteChannel(channel);
+                    }
+
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+
+    /**
+     * Xóa channel và toàn bộ event bên trong
+     *
+     * @param channel
+     * @return
+     * @throws SQLiteException
+     */
+    public static boolean deleteChannel(Channel channel) throws SQLiteException {
+        new LogTask("deleteChannel|channel:" + channel, TAB, LogTask.LOG_I);
+        if (ChannelRecord.isSugarEntity(ChannelRecord.class)) {
+            List<ChannelRecord> recordList = ChannelRecord.find(
+                    ChannelRecord.class, " CHANNEL_ID = ?", String.valueOf(channel.getChannelId()));
+
+            //.findWithQuery(ChannelRecord.class, " CHANNEL_ID = ?", "114064");
+            if (recordList.size() > 0) {
+                for (ChannelRecord record : recordList) {
+                    //  new LogTask("deleteChannel|channelid:" + record.channelId + ",channelName:" + record.channelName, TAB, LogTask.LOG_D);
+                    //   new LogTask("deleteChannel|events:" + record.channelEvents, TAB, LogTask.LOG_D);
+                    new LogTask("deleteChannel|try to delele:" + record.delete(), TAB, LogTask.LOG_D);
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+    public Channel convertRecordToChannel(ChannelRecord channelRecord) {
+        Channel channel = new Channel();
+        channel.setChannelId(channelRecord.channelId);
+        channel.setChannelName(channelRecord.channelName);
+
+        return null;
     }
 }

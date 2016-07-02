@@ -73,17 +73,27 @@
 
             </RelativeLayout>
 
-            <EditText
-                android:id="@+id/menu_editText_Channel"
+            <android.support.design.widget.TextInputLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Channel" />
+                android:layout_height="wrap_content">
 
-            <EditText
-                android:id="@+id/menu_editText_Event"
+                <EditText
+                    android:id="@+id/menu_editText_Channel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Channel" />
+            </android.support.design.widget.TextInputLayout>
+
+            <android.support.design.widget.TextInputLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Event" />
+                android:layout_height="wrap_content">
+
+                <EditText
+                    android:id="@+id/menu_editText_Event"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Event" />
+            </android.support.design.widget.TextInputLayout>
 
             <RelativeLayout
                 android:layout_width="match_parent"
@@ -95,7 +105,7 @@
                     android:layout_height="wrap_content"
                     android:layout_alignParentLeft="true"
                     android:layout_centerVertical="true"
-                    android:text="Regist" />
+                    android:text="Subscribe" />
 
                 <TextView
                     android:id="@+id/menu_textView_"
@@ -110,7 +120,7 @@
                 android:id="@+id/menu_button_CheckChannel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Get All Current Connected Channels/Events" />
+                android:text="Reconnect All Channel" />
 
             <android.support.v7.widget.RecyclerView
                 android:id="@+id/configuration_frame_recyclerView"

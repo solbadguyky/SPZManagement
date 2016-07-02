@@ -32,7 +32,6 @@ public class NotificationHelper {
     private NotifcationInterface notificationListener;
     private SharedPreferences sharedPreferences;
     private String pusherAppId, pusherAppCluster, pusherAppChannel, pusherAppEvent;
-    private String currentChannelName, currentChannelEvent;
 
     public NotificationHelper(Context context) {
         this.context = context;
@@ -49,12 +48,7 @@ public class NotificationHelper {
         pusherAppCluster = sharedPreferences.getString(
                 PusherHelper.CLIENT_CLUSTER,
                 PusherHelper.DEFAULT_CLIENT_CLUSTER);
-        currentChannelName = sharedPreferences.getString(
-                PusherHelper.CLIENT_CHANNEL,
-                PusherHelper.DEFAULT_CLIENT_CHANNEL);
-        currentChannelEvent = sharedPreferences.getString(
-                PusherHelper.CLIENT_EVENT,
-                PusherHelper.DEFAULT_CLIENT_EVENT);
+
     }
 
     public void addOnNotificationListener(NotifcationInterface listener) {

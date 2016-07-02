@@ -9,7 +9,7 @@ import java.util.ArrayList;
 public class Channel implements Serializable {
     public static final String TAB = "Channel";
 
-    private long channelId = -1;
+    private int channelId = -1;
     private String channelName;
     private ArrayList<Event> events;
 
@@ -21,7 +21,7 @@ public class Channel implements Serializable {
         this.channelName = channelName;
     }
 
-    public long getChannelId() {
+    public int getChannelId() {
         if (channelId == -1) {
             if (channelName != null && !channelName.isEmpty()) {
                 return toHash(channelName);
@@ -30,11 +30,11 @@ public class Channel implements Serializable {
         return this.channelId;
     }
 
-    public void setChannelId(long id) {
+    public void setChannelId(int id) {
         this.channelId = id;
     }
 
-    private long toHash(String src) {
+    public int toHash(String src) {
         return src.hashCode();
     }
 
@@ -52,6 +52,21 @@ public class Channel implements Serializable {
             }
         }
         return false;
+    }
+
+    boolean removeEventByName(String eventName) {
+        if (!eventName.isEmpty() && eventName != null) {
+            for (Event mEvent : events) {
+                if (mEvent.getEventName().equals(eventName)) {
+                    return events.remove(mEvent);
+                }
+            }
+        }
+        return false;
+    }
+
+    void setEventList(ArrayList<Event> events) {
+        this.events = events;
     }
 
     public String getChannelName() {
@@ -85,10 +100,33 @@ public class Channel implements Serializable {
     }
 
     public static class Event extends Channel {
+        public static final String NO_SPECIFIC = "No Specific";
         private String eventName;
+        private int eventId = -1;
+        private Object eventType;
+
+        public Event() {
+
+        }
 
         public Event(String eventName) {
             this.eventName = eventName;
+        }
+
+        public int getEventId() {
+            if (this.eventId == -1) {
+                if (this.eventName != null && !this.eventName.isEmpty()) {
+                    return toHash(eventName);
+                } else {
+                    return eventId;
+                }
+            } else
+                return eventId;
+
+        }
+
+        public void setEventId(int id) {
+            this.eventId = id;
         }
 
         public String getEventName() {
@@ -97,6 +135,18 @@ public class Channel implements Serializable {
 
         public void setEventName(String eventName) {
             this.eventName = eventName;
+        }
+
+        public Object getEventType() {
+            if (this.eventType == null) {
+                return NO_SPECIFIC;
+            } else {
+                return this.eventType;
+            }
+        }
+
+        public void setEventType(Object type) {
+            this.eventType = type;
         }
     }
 }

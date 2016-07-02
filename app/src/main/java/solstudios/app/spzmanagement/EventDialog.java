@@ -3,16 +3,16 @@ package solstudios.app.spzmanagement;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.DialogFragment;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
-
-import java.util.ArrayList;
 
 /**
  * Created by solbadguyky on 7/1/16.
@@ -21,6 +21,7 @@ public class EventDialog extends DialogFragment {
     public static final String TAB = "EventDialog";
 
     private Channel channel;
+    private IEventDialogItem iEventDialogItem;
 
     public EventDialog() {
         super();
@@ -53,21 +54,33 @@ public class EventDialog extends DialogFragment {
         alertDialogBuild.setPositiveButton("Delete Channel (All Events Will be Deleted)", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-
+                //.deleteChannel(channel);
+                if (iEventDialogItem != null) {
+                    iEventDialogItem.onDeleteChannel(channel);
+                }
             }
         });
-        ListView listView = (ListView) customView.findViewById(R.id.event_diaglog_listView);
 
-        ArrayList<String> eventsString = new ArrayList<>();
-        int count = 0;
-        for (Channel.Event event : channel.getEvents()) {
-            eventsString.add(event.getEventName().toString());
-            count++;
-        }
-        String[] eventArr = new String[eventsString.size()];
-        eventsString.toArray(eventArr);
+        ///display event list
+        ListView listView = (ListView) customView.findViewById(R.id.event_diaglog_listView);
+        final String[] eventArr = channel.getEventsArray();
         ArrayAdapter<String> adapter = new ArrayAdapter<String>(getActivity(), android.R.layout.simple_list_item_1, eventArr);
         listView.setAdapter(adapter);
+
+        listView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+            @Override
+            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+                if (iEventDialogItem != null) {
+                    iEventDialogItem.onLongPressItem(channel, channel.getEvents().get(position));
+                }
+                /*if (ChannelRecord.deleteEvent(channel, event)) {
+                    dismiss();
+                    return true;
+                } */
+                return false;
+            }
+        });
+
         return alertDialogBuild.create();
     }
 
@@ -81,5 +94,27 @@ public class EventDialog extends DialogFragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         channel = (Channel) getArguments().getSerializable(Channel.TAB);
+        if (iEventDialogItem == null) {
+            iEventDialogItem = (IEventDialogItem) getActivity();
+        }
+    }
+
+    @Override
+    public void onAttach(Context context) {
+        new LogTask("onAttach", TAB, LogTask.LOG_I);
+        super.onAttach(context);
+        try {
+            iEventDialogItem = (IEventDialogItem) context;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public interface IEventDialogItem {
+        void onLongPressItem(Channel channel, Channel.Event event);
+
+        void onPressItem(Channel channel, Channel.Event event);
+
+        void onDeleteChannel(Channel channel);
     }
 }
