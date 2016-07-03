@@ -17,9 +17,12 @@ public abstract class PusherBroadcast extends BroadcastReceiver {
     public static final String PACKAGE_NAME = " solstudios.app.spzmanagement";
 
     public static final String INTENT_SUBSCRIPTION = "subscription intent";
+    public static final String INTENT_BINDING = "binding intent";
     public static final String INTENT_SUBSCRIPTION_SUCCESS = "subscription success intent";
     public static final String INTENT_CONNECTION = "connection intent";
 
+
+    public static final String ACTION_BIND_EVENT = "onBindEvent";
     public static final String ACTION_SUBSCRIPTION_EVENT = "onSubcriptionEvent";
     public static final String ACTION_SUBSCRIPTION_CHANNEL = "onSubcriptionChannel";
     public static final String ACTION_CONNECTION_CHANGED = "onDefaultConnectionChanged";
@@ -42,6 +45,9 @@ public abstract class PusherBroadcast extends BroadcastReceiver {
 
     public abstract void onSubscriptionSucceeded(String channelName);
 
+    public abstract void onBindedEvent(String channel, String event);
+
+
     abstract void onError(Exception e);
 
     @Override
@@ -51,16 +57,19 @@ public abstract class PusherBroadcast extends BroadcastReceiver {
     }
 
     private void getPusherIntent(Intent intent) {
-        if (intent.hasExtra(INTENT_SUBSCRIPTION)) {
+        if (intent.hasExtra(INTENT_BINDING)) {
+            getBindBundle(intent.getBundleExtra(INTENT_BINDING));
+        } else if (intent.hasExtra(INTENT_SUBSCRIPTION)) {
             getSubcriptionBundle(intent.getBundleExtra(INTENT_SUBSCRIPTION));
         } else if (intent.hasExtra(INTENT_SUBSCRIPTION_SUCCESS)) {
-            getSubcriptionBundle(intent.getBundleExtra(INTENT_SUBSCRIPTION_SUCCESS));
+            getSuccessSubscriptionChannel(intent.getBundleExtra(INTENT_SUBSCRIPTION_SUCCESS));
         } else if (intent.hasExtra(CONNECTION_STATE_CHANGED)) {
             getConnectionIntent(intent.getStringExtra(CONNECTION_STATE_CHANGED));
         }
     }
 
     private void getSuccessSubscriptionChannel(Bundle bundle) {
+        new LogTask("getSuccessSubscriptionChannel", TAB, LogTask.LOG_I);
         String channel = bundle.getString(PusherBroadcast.SUBSCRIPTION_CHANNEL, null);
         if (channel != null) {
             onSubscriptionSucceeded(channel);
@@ -68,6 +77,7 @@ public abstract class PusherBroadcast extends BroadcastReceiver {
     }
 
     private void getSubcriptionBundle(Bundle bundle) {
+        new LogTask("getSubcriptionBundle", TAB, LogTask.LOG_I);
         String channel = bundle.getString(PusherBroadcast.SUBSCRIPTION_CHANNEL, null);
         String event = bundle.getString(PusherBroadcast.SUBSCRIPTION_EVENT, null);
         String message = bundle.getString(PusherBroadcast.SUBSCRIPTION_MESSAGE, null);
@@ -77,7 +87,19 @@ public abstract class PusherBroadcast extends BroadcastReceiver {
         }
     }
 
+
+    private void getBindBundle(Bundle bundle) {
+        new LogTask("getBindBundle", TAB, LogTask.LOG_I);
+        String channel = bundle.getString(PusherBroadcast.SUBSCRIPTION_CHANNEL, null);
+        String event = bundle.getString(PusherBroadcast.SUBSCRIPTION_EVENT, null);
+
+        if (channel != null && event != null) {
+            onBindedEvent(channel, event);
+        }
+    }
+
     private void getConnectionIntent(String jsonConnectionString) {
+        new LogTask("getSubcriptionBundle", TAB, LogTask.LOG_I);
         try {
             ConnectionStateChange connectionStateChange = new Gson().fromJson(jsonConnectionString, ConnectionStateChange.class);
             onDefaultConnectionChanged(connectionStateChange);
@@ -86,4 +108,16 @@ public abstract class PusherBroadcast extends BroadcastReceiver {
         }
     }
 
+   /* public static Intent createCustomIntent() {
+        Intent onEventItent = new Intent(PusherBroadcast.getActionIntent(PusherBroadcast.ACTION_SUBSCRIPTION_CHANNEL));
+
+        Bundle subscriptionBundle = new Bundle();
+        subscriptionBundle.putString(PusherBroadcast.SUBSCRIPTION_CHANNEL, s);
+        subscriptionBundle.putString(PusherBroadcast.SUBSCRIPTION_EVENT, s1);
+        subscriptionBundle.putString(PusherBroadcast.SUBSCRIPTION_MESSAGE, s2);
+
+        onEventItent.putExtra(PusherBroadcast.INTENT_SUBSCRIPTION, subscriptionBundle);
+
+        context.sendBroadcast(onEventItent);
+    } */
 }

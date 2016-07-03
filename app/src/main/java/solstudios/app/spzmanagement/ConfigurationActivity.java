@@ -6,7 +6,6 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
@@ -28,9 +27,11 @@ import android.widget.EditText;
 import android.widget.TextView;
 
 import com.pusher.client.Pusher;
+import com.pusher.client.connection.ConnectionState;
 import com.pusher.client.connection.ConnectionStateChange;
 
 import java.util.ArrayList;
+import java.util.Queue;
 
 import solstudios.app.spzmanagement.pusher.PusherHelper;
 
@@ -40,19 +41,17 @@ import solstudios.app.spzmanagement.pusher.PusherHelper;
 public class ConfigurationActivity extends BaseActivity implements BaseChannelAdapter.BaseAdapterInterface,
         EventDialog.IEventDialogItem {
     public static final String TAB = "Configuration Activity";
-
+    ///snackbar queue messages
+    Queue<QueueMessage> queueMessages;
     private SharedPreferences sharedPreferences;
-
     ///large layout
     private CoordinatorLayout coordinatorLayout;
     private RecyclerView channelRecyclerView;
     private LinearLayoutManager layoutManager;
-
-
     ///small layout
     private Toolbar toolbar;
     private android.app.ActionBar actionBar;
-    private Snackbar snackbar;
+    //private Snackbar snackbar;
     private Button submitButton, connectButton, checkChannelButton;
     private EditText appIdEditText, channelEditText, eventEditText, clusterEditText;
     private TextView conenctionTextView;
@@ -60,11 +59,12 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
     private String appId, cluster;
     private String old_appId, old_cluster;
     private BaseChannelAdapter baseAdapter;
-
+    ///pusher instance
     private PusherHelper pusherHelper;
     private Pusher currentPusherInstance;
-
+    ///pusher broadcaster
     private PusherBroadcast pusherBroadcastReceiver;
+    private QueueMessage.SnackbarManager snackbarManager;
 
     @Override
     protected void onResume() {
@@ -77,21 +77,30 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
                 public void onDefaultConnectionChanged(ConnectionStateChange connectionStateChange) {
                     new LogTask("onDefaultConnectionChanged|connectionStateChange:" + connectionStateChange.getPreviousState()
                             + " -> " + connectionStateChange.getCurrentState(),
-                            TAB, LogTask.LOG_D);
-
+                            TAB, LogTask.LOG_I);
+                    onConnectionStateChange(connectionStateChange);
                 }
 
                 @Override
                 public void onSubscriptionEvent(String channel, String event, String message) {
                     new LogTask("onSubscriptionEvent|channel:" + channel
                             + ",event:" + event + "\nmessage:" + message,
-                            TAB, LogTask.LOG_D);
+                            TAB, LogTask.LOG_I);
 
                 }
 
                 @Override
                 public void onSubscriptionSucceeded(String channelName) {
+                    new LogTask("onSubscriptionSucceeded|channelName:" + channelName,
+                            TAB, LogTask.LOG_I);
+                    subscriptionSucceeded(channelName);
+                }
 
+                @Override
+                public void onBindedEvent(String channel, String event) {
+                    new LogTask("onBindedEvent|channelName:" + channel + ",event:" + event,
+                            TAB, LogTask.LOG_I);
+                    bindSucceeded(channel, event);
                 }
 
                 @Override
@@ -107,6 +116,7 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
 
             IntentFilter filterPusherMessages = new IntentFilter();
             filterPusherMessages.addAction(PusherBroadcast.getActionIntent(PusherBroadcast.ACTION_SUBSCRIPTION_CHANNEL));
+            filterPusherMessages.addAction(PusherBroadcast.getActionIntent(PusherBroadcast.ACTION_BIND_EVENT));
             filterPusherMessages.addAction(PusherBroadcast.getActionIntent(PusherBroadcast.ACTION_SUBSCRIPTION_EVENT));
             filterPusherMessages.addAction(PusherBroadcast.getActionIntent(PusherBroadcast.ACTION_CONNECTION_CHANGED));
             this.registerReceiver(pusherBroadcastReceiver, filterPusherMessages);
@@ -217,13 +227,7 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
         clusterEditText.addTextChangedListener(new EditTextChangeListener(clusterEditText));
 
         ///snackbar
-        snackbar = Snackbar
-                .make(coordinatorLayout, "Had a snack at Snackbar", Snackbar.LENGTH_LONG);
-        snackbar.setActionTextColor(Color.RED);
-        View snackbarView = snackbar.getView();
-        snackbarView.setBackgroundColor(Color.DKGRAY);
-        TextView textView = (TextView) snackbarView.findViewById(android.support.design.R.id.snackbar_text);
-        textView.setTextColor(Color.YELLOW);
+
 
         ///pusher id
         if (old_appId != null) {
@@ -239,14 +243,10 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
         }
 
         if (old_appId == null || old_cluster == null) {
-            disableChannelView();
-            snackbar.setText("Pusher has not been configured!");
-            snackbar.show();
+            addMessage(new QueueMessage("Pusher has not been configured!"));
 
         } else if (old_appId.isEmpty() || old_cluster.isEmpty()) {
-            disableChannelView();
-            snackbar.setText("Pusher has not been configured!");
-            snackbar.show();
+            addMessage(new QueueMessage("Pusher has not been configured!"));
 
         } else {
             connect();
@@ -275,16 +275,59 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
 
     }
 
-    private void disableChannelView() {
-        submitButton.setEnabled(false);
-        channelEditText.setEnabled(false);
-        eventEditText.setEnabled(false);
+    private void onConnectionStateChange(ConnectionStateChange connectionStateChange) {
+        conenctionTextView.setText(connectionStateChange.getCurrentState().name());
+
+        if (connectionStateChange.getCurrentState() == ConnectionState.CONNECTING
+                || connectionStateChange.getCurrentState() == ConnectionState.DISCONNECTING) {
+            onChangingConnection();
+        } else if (connectionStateChange.getCurrentState() == ConnectionState.CONNECTED) {
+            connected();
+        } else if (connectionStateChange.getCurrentState() == ConnectionState.DISCONNECTED) {
+            disconnected();
+        }
     }
 
-    private void enableEventView() {
+    private void onChangingConnection() {
+        //disable button during changing connection
+        connectButton.setEnabled(false);
+        submitButton.setEnabled(false);
+
+        appIdEditText.setEnabled(false);
+        clusterEditText.setEnabled(false);
+
+    }
+
+    private void connected() {
+        connectButton.setEnabled(true);
         submitButton.setEnabled(true);
-        channelEditText.setEnabled(true);
-        eventEditText.setEnabled(true);
+
+        connectButton.setText("Disconnect");
+        appIdEditText.setEnabled(false);
+        clusterEditText.setEnabled(false);
+
+        connectButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                pusherHelper.disconnect();
+            }
+        });
+    }
+
+    private void disconnected() {
+        connectButton.setEnabled(true);
+        submitButton.setEnabled(true);
+
+        connectButton.setText("Connect");
+        appIdEditText.setEnabled(true);
+        clusterEditText.setEnabled(true);
+
+        connectButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                pusherHelper.resume();
+            }
+        });
     }
 
     private void checkValueAgain() {
@@ -300,16 +343,54 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
                 return;
             } else {
                 Channel mchannel = new Channel(getChannelString());
-                Channel.Event mEvent = new Channel.Event(getEventString());
-                mchannel.addEvent(mEvent);
-                // subcribeChannel(mchannel, mEvent);
-                pusherHelper.subcribe(mchannel, mEvent, null);
+                if (!getEventString().isEmpty()) {
+                    Channel.Event mEvent = new Channel.Event(getEventString());
+                    mchannel.addEvent(mEvent);
+                    // subcribeChannel(mchannel, mEvent);
+                    pusherHelper.subscribe(mchannel, mEvent, null);
+                } else {
+                    pusherHelper.subscribe(mchannel);
+                }
+
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
+    private void subscriptionSucceeded(String channelName) {
+        QueueMessage queueMessage = new QueueMessage();
+        queueMessage.setMessage(channelName + " has been successfully subscribed");
+        final Snackbar snackbar = QueueMessage.createSnackBar(coordinatorLayout, queueMessage);
+        snackbar.setAction("Dismiss", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (snackbar != null) {
+                    snackbar.dismiss();
+                }
+            }
+        });
+        addMessage(snackbar);
+    }
+
+    private void bindSucceeded(String channelName, String event) {
+        QueueMessage queueMessage = new QueueMessage();
+        queueMessage.setMessage(channelName + "/" + event + " has been successfully binded");
+        final Snackbar snackbar = QueueMessage.createSnackBar(coordinatorLayout, queueMessage);
+        snackbar.setAction("Dismiss", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (snackbar != null) {
+                    snackbar.dismiss();
+                }
+            }
+        });
+        addMessage(snackbar);
+    }
+
+    private void insertChannel() {
+
+    }
 
     private void connect() {
         new LogTask("connect", TAB, LogTask.LOG_I);
@@ -322,16 +403,16 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
             if (old_appId != null && old_cluster != null) {
                 onConnecting();
             } else {
-                snackbar.setText("Please Enter Values Before Connecting!");
-                snackbar.show();
+                addMessage(new QueueMessage("Please Enter Values Before Connecting!"));
+
             }
         }
     }
 
     private void onConnecting() {
         new LogTask("onConnecting", TAB, LogTask.LOG_I);
-        pusherHelper = new PusherHelper(this, true);
-        pusherHelper.checkConnection(/*new ConnectionEventListener() {
+        pusherHelper.resume();
+        /*pusherHelper.checkConnection(new ConnectionEventListener() {
             @Override
             public void onConnectionStateChange(final ConnectionStateChange connectionStateChange) {
                 new LogTask("connect|ConnectionEventListener,connectionStateChange:" + connectionStateChange.getCurrentState().name(), TAB, LogTask.LOG_I);
@@ -369,7 +450,7 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
                 });
 
             }
-        }*/);
+        }); */
     }
 
     private void subcribeAllChannels(final Channel mChannel, Channel.Event mEvent) throws Exception {
@@ -446,7 +527,6 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
 
     private String getEventString() {
         String eventString = eventEditText.getText().toString();
-
         if (!eventString.isEmpty() && eventString != null) {
             return eventString;
         } else {
@@ -504,6 +584,23 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
 
     }
 
+    private void addMessage(QueueMessage queueMessage) {
+        new LogTask("addMessage|queue message,message:" + queueMessage.getMessage(), TAB, LogTask.LOG_I);
+        if (snackbarManager == null) {
+            snackbarManager = new QueueMessage.SnackbarManager();
+        }
+        snackbarManager.addToQueue(QueueMessage.createSnackBar(coordinatorLayout, queueMessage));
+        //snackbarManager.show();
+    }
+
+    private void addMessage(Snackbar snackbar) {
+        if (snackbarManager == null) {
+            snackbarManager = new QueueMessage.SnackbarManager();
+        }
+        snackbarManager.addToQueue(snackbar);
+        //snackbarManager.show();
+    }
+
     private class EditTextChangeListener implements TextWatcher {
         private int viewId;
 
@@ -541,5 +638,4 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
 
         }
     }
-
 }
