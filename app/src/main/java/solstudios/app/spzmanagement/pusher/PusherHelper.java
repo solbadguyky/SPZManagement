@@ -353,9 +353,7 @@ public class PusherHelper {
 
         Pusher pusher = PusherClientInstance.getInstance(context).getCurrentPusherInstance();
         if (pusher.getConnection()
-                .getState() == ConnectionState.CONNECTED
-                || pusher.getConnection()
-                .getState() == ConnectionState.CONNECTING) {
+                .getState() == ConnectionState.CONNECTED) {
             //checkConnection();
 
             ///

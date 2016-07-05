@@ -6,7 +6,7 @@
     <uses-permission android:name="android.permission.GET_ACCOUNTS" />
     <uses-permission android:name="android.permission.READ_PROFILE" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
-    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:name=".MyApplication"
@@ -16,12 +16,18 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
-        <meta-data android:name="DATABASE" android:value="spz_channels.db" />
+        <meta-data
+            android:name="DATABASE"
+            android:value="spz_channels.db" />
         <meta-data
             android:name="VERSION"
             android:value="2" />
-        <meta-data android:name="QUERY_LOG" android:value="true" />
-        <meta-data android:name="DOMAIN_PACKAGE_NAME" android:value="solstudios.app.spzmanagemen" />
+        <meta-data
+            android:name="QUERY_LOG"
+            android:value="true" />
+        <meta-data
+            android:name="DOMAIN_PACKAGE_NAME"
+            android:value="solstudios.app.spzmanagemen" />
 
         <activity
             android:name=".LoginActivity"
@@ -32,10 +38,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".ConfigurationActivity" android:theme="@style/NoActionBarTheme"/>
+        <activity
+            android:name=".ConfigurationActivity"
+            android:theme="@style/NoActionBarTheme" />
         <activity
             android:name=".LogActivity"
-            android:theme="@style/ActionBarDialog" />
+            android:theme="@style/NoActionBarTheme" />
     </application>
 
 </manifest>

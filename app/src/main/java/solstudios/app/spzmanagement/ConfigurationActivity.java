@@ -335,7 +335,7 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
         connectButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                pusherHelper.resume();
+                connect();
             }
         });
     }
@@ -476,10 +476,10 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
     }
 
     private void writeValueToPref(String value, String key) {
+        new LogTask("writeValueToPref|value:" + value + ",key:" + key, TAB, LogTask.LOG_I);
         SharedPreferences.Editor editor = sharedPreferences.edit();
         editor.putString(key, value);
-        editor.commit();
-
+        editor.apply();
     }
 
     private void getChannels() {
