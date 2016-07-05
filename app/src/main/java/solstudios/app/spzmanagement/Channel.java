@@ -30,7 +30,7 @@ public class Channel implements Serializable {
         return this.channelId;
     }
 
-    public void setChannelId(int id) {
+    protected void setChannelId(int id) {
         this.channelId = id;
     }
 
@@ -38,11 +38,22 @@ public class Channel implements Serializable {
         return src.hashCode();
     }
 
-    boolean addEvent(Event event) {
+    protected boolean addEvent(Event event) {
         if (events == null) {
             events = new ArrayList<>();
         }
         return events.add(event);
+    }
+
+    boolean addEvent(String eventName) {
+        int eventIndex = getEventIndex(eventName);
+        if (eventIndex == -1) {
+            Event event = new Event();
+            event.setEventName(eventName);
+            return addEvent(event);
+        } else {
+            return false;
+        }
     }
 
     boolean removeEvent(Event event) {
@@ -55,14 +66,25 @@ public class Channel implements Serializable {
     }
 
     boolean removeEventByName(String eventName) {
+        int eventIndex = getEventIndex(eventName);
+        if (eventIndex > -1 && eventIndex < events.size()) {
+            events.remove(eventIndex);
+        }
+        return false;
+    }
+
+    int getEventIndex(String eventName) {
+        int i = -1;
         if (!eventName.isEmpty() && eventName != null) {
-            for (Event mEvent : events) {
+            for (Event mEvent : getEvents()) {
                 if (mEvent.getEventName().equals(eventName)) {
-                    return events.remove(mEvent);
+                    return i;
+                } else {
+                    i++;
                 }
             }
         }
-        return false;
+        return -1;
     }
 
     void setEventList(ArrayList<Event> events) {
@@ -73,7 +95,7 @@ public class Channel implements Serializable {
         return this.channelName;
     }
 
-    void setChannelName(String channelName) {
+    protected void setChannelName(String channelName) {
         this.channelName = channelName;
     }
 
@@ -96,6 +118,9 @@ public class Channel implements Serializable {
     }
 
     public ArrayList<Event> getEvents() {
+        if (this.events == null) {
+            return new ArrayList<>();
+        }
         return this.events;
     }
 
@@ -130,6 +155,9 @@ public class Channel implements Serializable {
         }
 
         public String getEventName() {
+            if (eventName == null || eventName.isEmpty()) {
+                return new String();
+            }
             return this.eventName;
         }
 

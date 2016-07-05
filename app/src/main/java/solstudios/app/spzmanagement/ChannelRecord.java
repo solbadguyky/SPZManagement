@@ -49,7 +49,7 @@ public class ChannelRecord extends SugarRecord {
             return false;
         }
 
-        ArrayList<Channel> channels = ChannelStack.getInstance();
+        ArrayList<Channel> channels = ChannelStack.getInstance().getChannelStack();
         if (ChannelRecord.isSugarEntity(ChannelRecord.class)) {
             for (Channel channel : channels) {
                 if (ChannelRecord.find(ChannelRecord.class, "CHANNEL_ID = ?", new String[]{channel.getChannelName()}).size() > 0) {

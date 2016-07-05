@@ -1,6 +1,5 @@
 package solstudios.app.spzmanagement;
 
-import android.app.Fragment;
 import android.content.Context;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
@@ -8,6 +7,8 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import java.util.ArrayList;
+
+import solstudios.app.spzmanagement.pusher.PusherHelper;
 
 /**
  * Created by solbadguyky on 6/30/16.
@@ -17,10 +18,11 @@ public class BaseChannelAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
 
     ArrayList<Channel> channelArrayList;
     private BaseAdapterInterface baseAdapterInterface;
+    private PusherHelper pusherHelper;
+
 
     public BaseChannelAdapter(Context context) {
         init(context);
-
     }
 
 
@@ -34,6 +36,8 @@ public class BaseChannelAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
 
         if (channelArrayList == null)
             channelArrayList = new ArrayList<>();
+
+        pusherHelper = new PusherHelper(context);
 
     }
 
@@ -65,18 +69,17 @@ public class BaseChannelAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
     }
 
     private void setUpChannelView(MyViewHolder.ChannelViewHolder itemView, Channel channel) {
-        String eventsString = new String();
-        int count = 0;
-        for (Channel.Event event : channel.getEvents()) {
-            if (count < channel.getEvents().size() - 1) {
-                eventsString += event.getEventName() + ",";
-            } else {
-                eventsString += event.getEventName();
-            }
-            count++;
-        }
-        itemView.buttonAction.setText(channel.getChannelName() + ":" + eventsString);
+
+        itemView.textViewChannelName.setText(channel.getChannelName());
+        itemView.textViewChannelEvents.setText("(" + channel.getEvents().size() + " event)");
         itemView.buttonAction.setOnClickListener(new ButtonListener(channel));
+
+        ///check channel's subscription
+        if (pusherHelper.isSubcribed(channel)) {
+            itemView.checkBoxChannelStatus.setChecked(true);
+        } else {
+            itemView.checkBoxChannelStatus.setChecked(false);
+        }
     }
 
     @Override
@@ -88,6 +91,10 @@ public class BaseChannelAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
     @Override
     public int getItemViewType(int position) {
         return super.getItemViewType(position);
+    }
+
+    public interface BaseAdapterInterface {
+        void onChannelButtonClick(Channel channel);
     }
 
     public class ButtonListener implements View.OnClickListener {
@@ -104,9 +111,5 @@ public class BaseChannelAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             }
         }
 
-    }
-
-    public interface BaseAdapterInterface {
-        void onChannelButtonClick(Channel channel);
     }
 }

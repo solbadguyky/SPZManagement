@@ -34,11 +34,11 @@ public class QueueMessage {
     public static Snackbar createSnackBar(View view, QueueMessage queueMessage) {
         Snackbar snackbar = Snackbar
                 .make(view, queueMessage.getMessage(), Snackbar.LENGTH_SHORT);
-        snackbar.setActionTextColor(Color.RED);
+        snackbar.setActionTextColor(Color.WHITE);
         View snackbarView = snackbar.getView();
         snackbarView.setBackgroundColor(Color.DKGRAY);
         TextView textView = (TextView) snackbarView.findViewById(android.support.design.R.id.snackbar_text);
-        textView.setTextColor(Color.WHITE);
+        textView.setTextColor(Color.LTGRAY);
 
         if (queueMessage.getMessageAction() != null) {
             snackbar.setAction(queueMessage.getMessageAction().actionName, queueMessage.getMessageAction().action);

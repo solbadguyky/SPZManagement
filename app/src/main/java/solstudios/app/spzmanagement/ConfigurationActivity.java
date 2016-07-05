@@ -1,6 +1,8 @@
 package solstudios.app.spzmanagement;
 
 import android.app.DialogFragment;
+import android.app.FragmentManager;
+import android.app.FragmentTransaction;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -25,21 +27,23 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.pusher.client.Pusher;
 import com.pusher.client.connection.ConnectionState;
 import com.pusher.client.connection.ConnectionStateChange;
 
-import java.util.ArrayList;
 import java.util.Queue;
 
+import solstudios.app.spzmanagement.pusher.InputFragment;
+import solstudios.app.spzmanagement.pusher.PusherClientInstance;
 import solstudios.app.spzmanagement.pusher.PusherHelper;
 
 /**
  * Created by solbadguyky on 6/30/16.
  */
 public class ConfigurationActivity extends BaseActivity implements BaseChannelAdapter.BaseAdapterInterface,
-        EventDialog.IEventDialogItem {
+        EventDialog.IEventDialogItem, ChannelStack.IChannelStack, InputFragment.IFragmentInput {
     public static final String TAB = "Configuration Activity";
     ///snackbar queue messages
     Queue<QueueMessage> queueMessages;
@@ -53,7 +57,7 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
     private android.app.ActionBar actionBar;
     //private Snackbar snackbar;
     private Button submitButton, connectButton, checkChannelButton;
-    private EditText appIdEditText, channelEditText, eventEditText, clusterEditText;
+    private EditText appIdEditText, channelEditText, clusterEditText;
     private TextView conenctionTextView;
     private Bundle pusherInfoBundle;
     private String appId, cluster;
@@ -61,7 +65,6 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
     private BaseChannelAdapter baseAdapter;
     ///pusher instance
     private PusherHelper pusherHelper;
-    private Pusher currentPusherInstance;
     ///pusher broadcaster
     private PusherBroadcast pusherBroadcastReceiver;
     private QueueMessage.SnackbarManager snackbarManager;
@@ -129,7 +132,6 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
         super.onPause();
         if (pusherBroadcastReceiver != null) {
             this.unregisterReceiver(pusherBroadcastReceiver);
-
         }
     }
 
@@ -181,7 +183,6 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
         connectButton = (Button) findViewById(R.id.menu_button_Connect);
         appIdEditText = (EditText) findViewById(R.id.menu_editText_AppID);
         channelEditText = (EditText) findViewById(R.id.menu_editText_Channel);
-        eventEditText = (EditText) findViewById(R.id.menu_editText_Event);
         clusterEditText = (EditText) findViewById(R.id.menu_editText_Cluster);
         conenctionTextView = (TextView) findViewById(R.id.menu_textView_Connect);
 
@@ -208,6 +209,8 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
                 onBackPressed();
             }
         });
+
+        ChannelStack.getInstance().setItemChangeListener(this);
     }
 
     @Override
@@ -223,7 +226,6 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
 
         appIdEditText.addTextChangedListener(new EditTextChangeListener(appIdEditText));
         channelEditText.addTextChangedListener(new EditTextChangeListener(channelEditText));
-        eventEditText.addTextChangedListener(new EditTextChangeListener(eventEditText));
         clusterEditText.addTextChangedListener(new EditTextChangeListener(clusterEditText));
 
         ///snackbar
@@ -249,7 +251,15 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
             addMessage(new QueueMessage("Pusher has not been configured!"));
 
         } else {
-            connect();
+            Pusher pusher = PusherClientInstance.getInstance(this).getCurrentPusherInstance();
+            if (pusher.getConnection()
+                    .getState() == ConnectionState.DISCONNECTED
+                    || pusher.getConnection()
+                    .getState() == ConnectionState.DISCONNECTING) {
+                connect();
+            } else {
+                onConnectionStateChange(new ConnectionStateChange(ConnectionState.CONNECTING, ConnectionState.CONNECTED));
+            }
         }
 
         connectButton.setOnClickListener(new View.OnClickListener() {
@@ -339,17 +349,17 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
         new LogTask("submitBundle", TAB, LogTask.LOG_I);
         checkValueAgain();
         try {
-            if (getChannelString() == null || getEventString() == null) {
+            if (getChannelString() == null) {
                 return;
             } else {
                 Channel mchannel = new Channel(getChannelString());
-                if (!getEventString().isEmpty()) {
-                    Channel.Event mEvent = new Channel.Event(getEventString());
-                    mchannel.addEvent(mEvent);
-                    // subcribeChannel(mchannel, mEvent);
-                    pusherHelper.subscribe(mchannel, mEvent, null);
+                // subcribeChannel(mchannel, mEvent);
+                if (pusherHelper.isSubcribed(mchannel)) {
+                    QueueMessage queueMessage = new QueueMessage();
+                    queueMessage.setMessage("Channel has aldready subbed. lol");
+                    addMessage(queueMessage);
                 } else {
-                    pusherHelper.subscribe(mchannel);
+                    pusherHelper.subscribe(mchannel, null);
                 }
 
             }
@@ -371,11 +381,19 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
             }
         });
         addMessage(snackbar);
+
+        ///add channel to stack
+        ChannelStack.getInstance().addChannel(channelName);
     }
 
     private void bindSucceeded(String channelName, String event) {
         QueueMessage queueMessage = new QueueMessage();
-        queueMessage.setMessage(channelName + "/" + event + " has been successfully binded");
+        if (pusherHelper.isSubcribed(channelName)) {
+            queueMessage.setMessage(channelName + "/" + event + " has been successfully binded");
+        } else {
+            queueMessage.setMessage("Please subscribe channel first");
+        }
+
         final Snackbar snackbar = QueueMessage.createSnackBar(coordinatorLayout, queueMessage);
         snackbar.setAction("Dismiss", new View.OnClickListener() {
             @Override
@@ -404,7 +422,6 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
                 onConnecting();
             } else {
                 addMessage(new QueueMessage("Please Enter Values Before Connecting!"));
-
             }
         }
     }
@@ -466,15 +483,7 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
     }
 
     private void getChannels() {
-        new LogTask("getChannels|channelStack:" + ChannelStack.getInstance(), TAB, LogTask.LOG_D);
-        ArrayList<Channel> channelList = new ArrayList<>();
-        for (Channel mChannel : ChannelStack.getInstance()) {
-            new LogTask("getChannels|mChannel:" + mChannel.getChannelName(), TAB, LogTask.LOG_D);
-            channelList.add(mChannel);
-            for (Channel.Event mEvent : mChannel.getEvents()) {
-                new LogTask("getChannels|mEvent:" + mEvent.getEventName(), TAB, LogTask.LOG_D);
-            }
-        }
+        //new LogTask("getChannels|channelStack:" + ChannelStack.getInstance(), TAB, LogTask.LOG_D);
 
         if (baseAdapter == null) {
             baseAdapter = new BaseChannelAdapter(this);
@@ -482,7 +491,7 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
             baseAdapter.clear();
         }
 
-        baseAdapter.addChannels(channelList);
+        baseAdapter.addChannels(ChannelStack.getInstance().getChannelStack());
         baseAdapter.notifyDataSetChanged();
 
     }
@@ -525,17 +534,6 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
 
     }
 
-    private String getEventString() {
-        String eventString = eventEditText.getText().toString();
-        if (!eventString.isEmpty() && eventString != null) {
-            return eventString;
-        } else {
-            eventEditText.setError("This Field is required!");
-            return null;
-        }
-
-    }
-
     @Override
     public void onChannelButtonClick(Channel channel) {
         showDialog(channel);
@@ -563,24 +561,35 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
 
     @Override
     public void onPressItem(Channel channel, Channel.Event event) {
-
+        if (pusherHelper.isConnected()) {
+            pusherHelper.bind(channel, event, null);
+        } else {
+            Toast.makeText(this, "No connection", Toast.LENGTH_SHORT).show();
+        }
     }
 
     @Override
     public void onDeleteChannel(Channel channel) {
         new LogTask("onDeleteChannel|channel:" + channel, TAB, LogTask.LOG_D);
-        ChannelStack.getInstance().remove(channel);
+        ChannelStack.getInstance().removeChannel(channel);
         pusherHelper.unsubscribe(channel);
         getChannels();
     }
 
-    //@Override
-    public void onDefaultConnectionChanged(ConnectionStateChange connectionStateChange) {
-
-    }
-
-    // @Override
-    public void onSubcriptionEvent(String channel, String event, String message) {
+    @Override
+    public void onAddMoreEvents(Channel channel) {
+        InputFragment inputFragment;
+        if (getFragmentManager().findFragmentByTag(InputFragment.TAB) != null) {
+            inputFragment = (InputFragment) getFragmentManager().findFragmentByTag(InputFragment.TAB);
+            inputFragment.setNewChannel(channel);
+        } else {
+            inputFragment = InputFragment.newEvent(channel);
+            inputFragment.setInputChangeListener(this);
+            FragmentTransaction fragmentTransaction = getFragmentManager().beginTransaction();
+            fragmentTransaction.add(inputFragment, InputFragment.TAB);
+            fragmentTransaction.addToBackStack(InputFragment.TAB);
+            fragmentTransaction.commit();
+        }
 
     }
 
@@ -599,6 +608,40 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
         }
         snackbarManager.addToQueue(snackbar);
         //snackbarManager.show();
+    }
+
+    @Override
+    public void onItemChanged() {
+        new LogTask("onItemChanged", TAB, LogTask.LOG_I);
+        getChannels();
+    }
+
+    @Override
+    public void onSaveEvent(Channel channel, Channel.Event event) {
+
+    }
+
+    @Override
+    public void onSaveEvent(Channel channel, String event) {
+        new LogTask("onSaveEvent|channle:" + channel.getChannelName() + ",event:" + event, TAB, LogTask.LOG_D);
+        ChannelStack.getInstance().addEvent(channel, event);
+    }
+
+    @Override
+    public void onDismiss(String name) {
+        switch (name) {
+            case EventDialog.TAB:
+                if (getFragmentManager().findFragmentByTag(EventDialog.TAB) != null) {
+                    getFragmentManager().popBackStack(EventDialog.TAB, FragmentManager.POP_BACK_STACK_INCLUSIVE);
+                }
+                break;
+            case InputFragment.TAB:
+                if (getFragmentManager().findFragmentByTag(InputFragment.TAB) != null) {
+                    getFragmentManager().popBackStack(InputFragment.TAB, FragmentManager.POP_BACK_STACK_INCLUSIVE);
+                }
+                break;
+        }
+
     }
 
     private class EditTextChangeListener implements TextWatcher {
@@ -628,9 +671,7 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
                 case R.id.menu_editText_Channel:
 
                     break;
-                case R.id.menu_editText_Event:
 
-                    break;
                 case R.id.menu_editText_Cluster:
                     cluster = clusterEditText.getText().toString();
                     break;

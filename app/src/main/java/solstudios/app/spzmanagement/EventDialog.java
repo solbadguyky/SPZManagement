@@ -7,12 +7,16 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
+import android.support.v7.widget.AppCompatCheckBox;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.TextView;
+
+import java.util.ArrayList;
 
 /**
  * Created by solbadguyky on 7/1/16.
@@ -51,6 +55,16 @@ public class EventDialog extends DialogFragment {
         alertDialogBuild.setTitle(channel.getChannelName());
         alertDialogBuild.setMessage("Click Single Row To View Debug Message.Long Click to Delete Event");
 
+        alertDialogBuild.setNeutralButton("Add more events", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                if (iEventDialogItem != null) {
+                    iEventDialogItem.onAddMoreEvents(channel);
+                }
+
+            }
+        });
+
         alertDialogBuild.setPositiveButton("Delete Channel (All Events Will be Deleted)", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
@@ -63,21 +77,37 @@ public class EventDialog extends DialogFragment {
 
         ///display event list
         ListView listView = (ListView) customView.findViewById(R.id.event_diaglog_listView);
-        final String[] eventArr = channel.getEventsArray();
-        ArrayAdapter<String> adapter = new ArrayAdapter<String>(getActivity(), android.R.layout.simple_list_item_1, eventArr);
-        listView.setAdapter(adapter);
+        //final String[] eventArr = channel.getEventsArray();
+        //ArrayAdapter<String> adapter = new ArrayAdapter<>(getActivity(), android.R.layout.simple_list_item_1, eventArr);
+        EventAdapter eventAdapter = new EventAdapter(getActivity(), channel.getEvents());
+
+        listView.setAdapter(eventAdapter);
 
         listView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
             @Override
             public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
                 if (iEventDialogItem != null) {
                     iEventDialogItem.onLongPressItem(channel, channel.getEvents().get(position));
+
                 }
+
+                dismiss();
                 /*if (ChannelRecord.deleteEvent(channel, event)) {
                     dismiss();
                     return true;
                 } */
                 return false;
+            }
+        });
+
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                if (iEventDialogItem != null) {
+                    iEventDialogItem.onPressItem(channel, channel.getEvents().get(position));
+                }
+
+                dismiss();
             }
         });
 
@@ -110,11 +140,57 @@ public class EventDialog extends DialogFragment {
         }
     }
 
+    @Override
+    public void onDismiss(DialogInterface dialog) {
+        super.onDismiss(dialog);
+        if (iEventDialogItem != null) {
+            iEventDialogItem.onDismiss(TAB);
+        }
+    }
+
     public interface IEventDialogItem {
         void onLongPressItem(Channel channel, Channel.Event event);
 
         void onPressItem(Channel channel, Channel.Event event);
 
         void onDeleteChannel(Channel channel);
+
+        void onAddMoreEvents(Channel channel);
+
+        void onDismiss(String name);
     }
+
+    public class EventAdapter extends ArrayAdapter<Channel.Event> {
+
+        public static final String TAB = "EventAdapter";
+
+        private ArrayList<Channel.Event> eventArrayList;
+
+        public EventAdapter(Context context, ArrayList<Channel.Event> initEvent) {
+            super(context, 0);
+            this.eventArrayList = initEvent;
+        }
+
+        @Override
+        public int getCount() {
+            if (this.eventArrayList == null) {
+                this.eventArrayList = new ArrayList<>();
+            }
+            return this.eventArrayList.size();
+        }
+
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent) {
+            //return super.getView(position, convertView, parent);
+            Channel.Event item = eventArrayList.get(position);
+            View eventView = LayoutInflater.from(parent.getContext()).inflate(R.layout.event, parent, false);
+            TextView eventNameTextView = (TextView) eventView.findViewById(R.id.event_textView_EventName);
+            AppCompatCheckBox eventStatusCheckBox = (AppCompatCheckBox) eventView.findViewById(R.id.event_checkBox_Status);
+
+            eventNameTextView.setText(item.getEventName());
+
+            return eventView;
+        }
+    }
+
 }

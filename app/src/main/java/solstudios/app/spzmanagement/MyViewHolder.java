@@ -1,9 +1,9 @@
 package solstudios.app.spzmanagement;
 
+import android.support.v7.widget.AppCompatCheckBox;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
 import android.widget.Button;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 
 /**
@@ -13,10 +13,15 @@ public class MyViewHolder {
     public static class ChannelViewHolder extends RecyclerView.ViewHolder {
 
         public Button buttonAction;
+        public TextView textViewChannelName, textViewChannelEvents;
+        public AppCompatCheckBox checkBoxChannelStatus;
 
         public ChannelViewHolder(View itemView) {
             super(itemView);
             buttonAction = (Button) itemView.findViewById(R.id.channel_button_Action);
+            textViewChannelName = (TextView) itemView.findViewById(R.id.channel_textView_ChannelName);
+            textViewChannelEvents = (TextView) itemView.findViewById(R.id.channel_textView_ChannelEvent);
+            checkBoxChannelStatus = (AppCompatCheckBox) itemView.findViewById(R.id.channel_checkBox_Status);
 
         }
     }

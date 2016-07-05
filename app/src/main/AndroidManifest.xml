@@ -33,6 +33,9 @@
             </intent-filter>
         </activity>
         <activity android:name=".ConfigurationActivity" android:theme="@style/NoActionBarTheme"/>
+        <activity
+            android:name=".LogActivity"
+            android:theme="@style/ActionBarDialog" />
     </application>
 
 </manifest>

@@ -18,7 +18,7 @@ import solstudios.app.spzmanagement.PusherBroadcast;
 
 public class PusherClientInstance {
     public static final String TAB = "PusherClientInstance";
-    public static PusherClientInstance mPusherClientInstance;
+    private static PusherClientInstance mPusherClientInstance;
     private Context context;
     private Pusher pusher;
     private String currentAppID, currentCluster;
@@ -89,7 +89,7 @@ public class PusherClientInstance {
     }
 
     public Pusher getCurrentPusherInstance() {
-        if (pusher != null) {
+        if (pusher == null) {
             return createNewPusher();
         } else {
             return pusher;

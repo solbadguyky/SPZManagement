@@ -3,22 +3,21 @@ package solstudios.app.spzmanagement;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
-import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.support.annotation.NonNull;
-import android.support.design.widget.Snackbar;
-import android.support.v7.app.AppCompatActivity;
 import android.app.LoaderManager.LoaderCallbacks;
-
+import android.content.Context;
 import android.content.CursorLoader;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.Loader;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.AsyncTask;
-
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.ContactsContract;
+import android.support.annotation.NonNull;
+import android.support.design.widget.Snackbar;
 import android.text.TextUtils;
 import android.view.KeyEvent;
 import android.view.Menu;
@@ -31,16 +30,22 @@ import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import com.pusher.client.connection.ConnectionStateChange;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
+
+import solstudios.app.spzmanagement.pusher.PusherHelper;
 
 import static android.Manifest.permission.READ_CONTACTS;
 
 /**
  * A login screen that offers login via email/password.
  */
-public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<Cursor> {
+public class LoginActivity extends BaseActivity implements LoaderCallbacks<Cursor> {
 
     /**
      * Id to identity READ_CONTACTS permission request.
@@ -64,16 +69,38 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
     private EditText mPasswordView;
     private View mProgressView;
     private View mLoginFormView;
+    private Button mEmailSignInButton;
+    private TextView logTextView;
+
+    ///SPZ_Management
+    private boolean canConfig = false;
+    private PusherBroadcast pusherBroadcastReceiver;
+    private PusherHelper pusherHelper;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_login);
-        // Set up the login form.
-        mEmailView = (AutoCompleteTextView) findViewById(R.id.email);
-        populateAutoComplete();
+    public void initValue() {
+        pusherHelper = new PusherHelper(this);
+    }
 
+    @Override
+    public void initView() {
+        mEmailView = (AutoCompleteTextView) findViewById(R.id.email);
         mPasswordView = (EditText) findViewById(R.id.password);
+        mEmailSignInButton = (Button) findViewById(R.id.email_sign_in_button);
+
+        mLoginFormView = findViewById(R.id.login_form);
+        mProgressView = findViewById(R.id.login_progress);
+
+        logTextView = (TextView) findViewById(R.id.textView_LoginStatus);
+    }
+
+    @Override
+    public void setupValue() {
+
+    }
+
+    @Override
+    public void setupView() {
         mPasswordView.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
@@ -85,7 +112,6 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
             }
         });
 
-        Button mEmailSignInButton = (Button) findViewById(R.id.email_sign_in_button);
         mEmailSignInButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -93,11 +119,16 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
             }
         });
 
-        mLoginFormView = findViewById(R.id.login_form);
-        mProgressView = findViewById(R.id.login_progress);
-
-
+        // Set up the login form.
+        populateAutoComplete();
     }
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_login);
+    }
+
 
     private void populateAutoComplete() {
         if (!mayRequestContacts()) {
@@ -179,6 +210,17 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         } else if (!isEmailValid(email)) {
             mEmailView.setError(getString(R.string.error_invalid_email));
             focusView = mEmailView;
+            cancel = true;
+        }
+
+        //check for a valid password
+        if (TextUtils.isEmpty(password)) {
+            mPasswordView.setError(getString(R.string.error_field_required));
+            focusView = mPasswordView;
+            cancel = true;
+        } else if (!isPasswordValid(password)) {
+            mPasswordView.setError(getString(R.string.error_incorrect_password));
+            focusView = mPasswordView;
             cancel = true;
         }
 
@@ -284,6 +326,115 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         mEmailView.setAdapter(adapter);
     }
 
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        this.getMenuInflater().inflate(R.menu.menu, menu);
+        return canConfig;
+
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.menu_pusher:
+                Intent configurationActivity = new Intent(this, ConfigurationActivity.class);
+                startActivity(configurationActivity);
+
+                return true;
+
+            case R.id.menu_log:
+                Intent logActivity = new Intent(this, LogActivity.class);
+                startActivity(logActivity);
+                return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        if (pusherBroadcastReceiver == null) {
+            pusherBroadcastReceiver = new PusherBroadcast() {
+
+                @Override
+                public void onDefaultConnectionChanged(ConnectionStateChange connectionStateChange) {
+                    new LogTask("onDefaultConnectionChanged|connectionStateChange:" + connectionStateChange.getPreviousState()
+                            + " -> " + connectionStateChange.getCurrentState(),
+                            TAB, LogTask.LOG_I);
+                    onConnectionStateChange(connectionStateChange);
+                }
+
+                @Override
+                public void onSubscriptionEvent(String channel, String event, String message) {
+                    new LogTask("onSubscriptionEvent|channel:" + channel
+                            + ",event:" + event + "\nmessage:" + message,
+                            TAB, LogTask.LOG_I);
+
+                }
+
+                @Override
+                public void onSubscriptionSucceeded(String channelName) {
+                    new LogTask("onSubscriptionSucceeded|channelName:" + channelName,
+                            TAB, LogTask.LOG_I);
+                    //subscriptionSucceeded(channelName);
+                }
+
+                @Override
+                public void onBindedEvent(String channel, String event) {
+                    new LogTask("onBindedEvent|channelName:" + channel + ",event:" + event,
+                            TAB, LogTask.LOG_I);
+                    //bindSucceeded(channel, event);
+                }
+
+                @Override
+                void onError(Exception e) {
+
+                }
+
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    super.onReceive(context, intent);
+                }
+            };
+        }
+        IntentFilter filterPusherMessages = new IntentFilter();
+        filterPusherMessages.addAction(PusherBroadcast.getActionIntent(PusherBroadcast.ACTION_SUBSCRIPTION_CHANNEL));
+        filterPusherMessages.addAction(PusherBroadcast.getActionIntent(PusherBroadcast.ACTION_BIND_EVENT));
+        filterPusherMessages.addAction(PusherBroadcast.getActionIntent(PusherBroadcast.ACTION_SUBSCRIPTION_EVENT));
+        filterPusherMessages.addAction(PusherBroadcast.getActionIntent(PusherBroadcast.ACTION_CONNECTION_CHANGED));
+        this.registerReceiver(pusherBroadcastReceiver, filterPusherMessages);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (pusherBroadcastReceiver != null) {
+            this.unregisterReceiver(pusherBroadcastReceiver);
+        }
+    }
+
+    private void connect(String myHashUserId) {
+        if (myHashUserId != null) {
+            if (!myHashUserId.isEmpty()) {
+                pusherHelper.resume();
+            }
+        }
+    }
+
+    private void onConnectionStateChange(ConnectionStateChange connectionStateChange) {
+        switch (connectionStateChange.getCurrentState()) {
+            case CONNECTED:
+                logTextView.setText("Connected");
+                break;
+            case DISCONNECTED:
+                logTextView.setText("Disconnected");
+                break;
+            case CONNECTING:
+                logTextView.setText("Connecting");
+                break;
+        }
+    }
 
     private interface ProfileQuery {
         String[] PROJECTION = {
@@ -301,8 +452,9 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
      */
     public class UserLoginTask extends AsyncTask<Void, Void, Boolean> {
 
-        private final String mEmail;
-        private final String mPassword;
+        private String mEmail = "null";
+        private String mPassword = "null";
+        private String myHashUserId;
 
         UserLoginTask(String email, String password) {
             mEmail = email;
@@ -310,9 +462,15 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         }
 
         @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+        }
+
+        @Override
         protected Boolean doInBackground(Void... params) {
             // TODO: attempt authentication against a network service.
 
+            myHashUserId = Long.toHexString(mEmail.hashCode() + mPassword.hashCode() * Calendar.getInstance().getTimeInMillis());
             try {
                 // Simulate network access.
                 Thread.sleep(2000);
@@ -338,7 +496,20 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
             showProgress(false);
 
             if (success) {
-                finish();
+                Toast.makeText(LoginActivity.this, "Retrieved Hashid: " + myHashUserId, Toast.LENGTH_SHORT).show();
+
+                mEmailSignInButton.setText("MyId: " + myHashUserId);
+                mEmailSignInButton.setEnabled(false);
+
+                mEmailView.setEnabled(false);
+                mPasswordView.setEnabled(false);
+
+                canConfig = true;
+                invalidateOptionsMenu();
+
+                ///resume
+                connect(myHashUserId);
+
             } else {
                 mPasswordView.setError(getString(R.string.error_incorrect_password));
                 mPasswordView.requestFocus();
@@ -351,26 +522,5 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
             showProgress(false);
         }
     }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        this.getMenuInflater().inflate(R.menu.menu, menu);
-        return true;
-
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()) {
-            case R.id.menu_pusher:
-                Intent configurationActivity = new Intent(this, ConfigurationActivity.class);
-                startActivity(configurationActivity);
-
-                return true;
-        }
-        return super.onOptionsItemSelected(item);
-    }
-
-
 }
 

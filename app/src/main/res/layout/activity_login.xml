@@ -71,11 +71,13 @@
                 android:layout_marginTop="16dp"
                 android:text="@string/action_sign_in"
                 android:textStyle="bold" />
+
             <TextView
                 android:id="@+id/textView_LoginStatus"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Waiting For Connecting..."/>
+                android:layout_marginLeft="5dp"
+                android:text="Waiting For Connection..." />
         </LinearLayout>
     </ScrollView>
 </LinearLayout>

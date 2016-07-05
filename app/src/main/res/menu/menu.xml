@@ -3,6 +3,9 @@
 <group
     android:id="@+id/group_menu_pusher">
     <item
+        android:id="@+id/menu_log"
+        android:title="View Log" />
+    <item
         android:id="@+id/menu_pusher"
         android:title="Pusher Configuration"/>
 
