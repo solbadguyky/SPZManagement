@@ -75,6 +75,66 @@ public class PusherHelper {
                 .getDefaultSharedPreferences(context);
     }
 
+    /**
+     * public static void update(Context context, JSONObject jsonObject) {
+     * new LogTask("update", TAB, LogTask.LOG_I);
+     * try {
+     * JSONArray jsonArray = jsonObject
+     * .getJSONArray(PusherHelper.TAG_ROOT);
+     * for (int i = 0; i < jsonArray.length(); i++) {
+     * <p>
+     * JSONObject e = jsonArray.getJSONObject(i);
+     * <p>
+     * new LogTask("update|appid="
+     * + e.getString(PusherHelper.TAG_APPID).toString()
+     * + ",pusher_channel="
+     * + e.getString(PusherHelper.TAG_CHANNEL).toString()
+     * + ",pusher_event="
+     * + e.getString(PusherHelper.TAG_EVENT).toString()
+     * + ",cluster="
+     * + e.getString(PusherHelper.TAG_CLUSTER).toString(), TAB,
+     * LogTask.LOG_D);
+     * <p>
+     * String appid = e.getString(PusherHelper.TAG_APPID).toString();
+     * String channel = e.getString(PusherHelper.TAG_CHANNEL)
+     * .toString();
+     * String event = e.getString(PusherHelper.TAG_EVENT).toString();
+     * String cluster = e.getString(PusherHelper.TAG_CLUSTER)
+     * .toString();
+     * <p>
+     * /// write new pusher-client-info
+     * SharedPreferences defaultSharedPreferences = PreferenceManager
+     * .getDefaultSharedPreferences(context);
+     * Editor editor = defaultSharedPreferences.edit();
+     * editor.putString(SettingActivity.PREF_PUSHER_CLIENT_APPID,
+     * appid);
+     * editor.putString(SettingActivity.PREF_PUSHER_CLIENT_CHANNEL,
+     * channel);
+     * editor.putString(SettingActivity.PREF_PUSHER_CLIENT_EVENT,
+     * event);
+     * editor.putString(SettingActivity.PREF_PUSHER_CLIENT_CLUSTER,
+     * cluster);
+     * editor.commit();
+     * <p>
+     * }
+     * <p>
+     * } catch (JSONException e) {
+     * // TODO Auto-generated catch block
+     * e.printStackTrace();
+     * }
+     * }
+     */
+
+    public void connect(String appid, String cluster) {
+        //Pusher pusher = PusherClientInstance.getInstance(context).getCurrentPusherInstance();
+        PusherClientInstance.getInstance(context, appid, cluster).connect();
+
+    }
+
+    public void connect() {
+        new LogTask("checkPusherConnection", TAB, LogTask.LOG_I);
+        resume();
+    }
 
     public void connectToPusherClient(@Nullable SubscriptionEventListener subscriptionEventListener)
             throws Exception {
@@ -262,61 +322,6 @@ public class PusherHelper {
      */
 
     /**
-     * public static void update(Context context, JSONObject jsonObject) {
-     * new LogTask("update", TAB, LogTask.LOG_I);
-     * try {
-     * JSONArray jsonArray = jsonObject
-     * .getJSONArray(PusherHelper.TAG_ROOT);
-     * for (int i = 0; i < jsonArray.length(); i++) {
-     * <p>
-     * JSONObject e = jsonArray.getJSONObject(i);
-     * <p>
-     * new LogTask("update|appid="
-     * + e.getString(PusherHelper.TAG_APPID).toString()
-     * + ",pusher_channel="
-     * + e.getString(PusherHelper.TAG_CHANNEL).toString()
-     * + ",pusher_event="
-     * + e.getString(PusherHelper.TAG_EVENT).toString()
-     * + ",cluster="
-     * + e.getString(PusherHelper.TAG_CLUSTER).toString(), TAB,
-     * LogTask.LOG_D);
-     * <p>
-     * String appid = e.getString(PusherHelper.TAG_APPID).toString();
-     * String channel = e.getString(PusherHelper.TAG_CHANNEL)
-     * .toString();
-     * String event = e.getString(PusherHelper.TAG_EVENT).toString();
-     * String cluster = e.getString(PusherHelper.TAG_CLUSTER)
-     * .toString();
-     * <p>
-     * /// write new pusher-client-info
-     * SharedPreferences defaultSharedPreferences = PreferenceManager
-     * .getDefaultSharedPreferences(context);
-     * Editor editor = defaultSharedPreferences.edit();
-     * editor.putString(SettingActivity.PREF_PUSHER_CLIENT_APPID,
-     * appid);
-     * editor.putString(SettingActivity.PREF_PUSHER_CLIENT_CHANNEL,
-     * channel);
-     * editor.putString(SettingActivity.PREF_PUSHER_CLIENT_EVENT,
-     * event);
-     * editor.putString(SettingActivity.PREF_PUSHER_CLIENT_CLUSTER,
-     * cluster);
-     * editor.commit();
-     * <p>
-     * }
-     * <p>
-     * } catch (JSONException e) {
-     * // TODO Auto-generated catch block
-     * e.printStackTrace();
-     * }
-     * }
-     */
-
-    public void checkPusherConnection() {
-        new LogTask("checkPusherConnection", TAB, LogTask.LOG_I);
-        resume();
-    }
-
-    /**
      * Ngắt kết nối (tạm thời) khi khởi động ứng dụng
      */
     public void disconnect() {
@@ -368,16 +373,8 @@ public class PusherHelper {
     }
 
     private void onResume() {
-
-        Pusher pusher = PusherClientInstance.getInstance(context).getCurrentPusherInstance();
-        if (pusher.getConnection()
-                .getState() == ConnectionState.DISCONNECTED
-                || pusher.getConnection()
-                .getState() == ConnectionState.DISCONNECTING) {
-            //checkConnection();
-            PusherClientInstance.getInstance(context).connect();
-        }
-
+        //Pusher pusher = PusherClientInstance.getInstance(context).getCurrentPusherInstance();
+        PusherClientInstance.getInstance(context).connect();
     }
 
     public class DefaultSubscriptionEventListener implements SubscriptionEventListener {

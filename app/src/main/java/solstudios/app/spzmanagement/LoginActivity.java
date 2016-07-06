@@ -9,12 +9,14 @@ import android.content.CursorLoader;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.Loader;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.provider.ContactsContract;
 import android.support.annotation.NonNull;
 import android.support.design.widget.Snackbar;
@@ -38,6 +40,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
+import solstudios.app.spzmanagement.pusher.PusherClientInstance;
 import solstudios.app.spzmanagement.pusher.PusherHelper;
 
 import static android.Manifest.permission.READ_CONTACTS;
@@ -46,6 +49,10 @@ import static android.Manifest.permission.READ_CONTACTS;
  * A login screen that offers login via email/password.
  */
 public class LoginActivity extends BaseActivity implements LoaderCallbacks<Cursor> {
+    public static final String TAB = "LoginActivity";
+    public static final String USER_MAIL = "UserMail";
+    public static final String USER_PASS = "UserPass";
+    public static final String USER_LOGIN_HASH_VALUE = "User_Login_Hash";
 
     /**
      * Id to identity READ_CONTACTS permission request.
@@ -74,12 +81,14 @@ public class LoginActivity extends BaseActivity implements LoaderCallbacks<Curso
 
     ///SPZ_Management
     private boolean canConfig = false;
+    private SharedPreferences sharedPreferences;
     private PusherBroadcast pusherBroadcastReceiver;
     private PusherHelper pusherHelper;
 
     @Override
     public void initValue() {
         pusherHelper = new PusherHelper(this);
+        sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
     }
 
     @Override
@@ -121,6 +130,66 @@ public class LoginActivity extends BaseActivity implements LoaderCallbacks<Curso
 
         // Set up the login form.
         populateAutoComplete();
+        checkSavedInstance();
+    }
+
+    private boolean checkSavedInstance() {
+        String oldUserId = sharedPreferences.getString(USER_MAIL, null);
+        String oldUserPass = sharedPreferences.getString(USER_PASS, null);
+        String savedHash = sharedPreferences.getString(USER_LOGIN_HASH_VALUE, null);
+
+        if (oldUserId != null && oldUserPass != null && savedHash != null) {
+            mEmailView.setText(oldUserId);
+            mPasswordView.setText(oldUserPass);
+
+            changeLoginButtonState(99);
+            return true;
+        } else {
+            changeLoginButtonState(0);
+            return false;
+        }
+    }
+
+    private void changeLoginButtonState(int loginState) {
+        switch (loginState) {
+            case -1:
+                mEmailSignInButton.setText("Reconnect");
+                mEmailSignInButton.setOnClickListener(new OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+                        attemptLogin();
+                    }
+                });
+                break;
+            case 0:
+                mEmailSignInButton.setText("Login");
+                mEmailSignInButton.setOnClickListener(new OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+                        attemptLogin();
+                    }
+                });
+                break;
+            case 1:
+                mEmailSignInButton.setText("Logout");
+                mEmailSignInButton.setOnClickListener(new OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+                        disconnect();
+                    }
+                });
+                break;
+            case 99:
+                mEmailSignInButton.setText("Re-Login");
+                mEmailSignInButton.setOnClickListener(new OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        String savedHash = sharedPreferences.getString(USER_LOGIN_HASH_VALUE, null);
+                        connect(savedHash);
+                    }
+                });
+                break;
+        }
     }
 
     @Override
@@ -330,7 +399,6 @@ public class LoginActivity extends BaseActivity implements LoaderCallbacks<Curso
     public boolean onCreateOptionsMenu(Menu menu) {
         this.getMenuInflater().inflate(R.menu.menu, menu);
         return canConfig;
-
     }
 
     @Override
@@ -422,18 +490,40 @@ public class LoginActivity extends BaseActivity implements LoaderCallbacks<Curso
         }
     }
 
+    private void disconnect() {
+        pusherHelper.disconnect();
+    }
+
     private void onConnectionStateChange(ConnectionStateChange connectionStateChange) {
         switch (connectionStateChange.getCurrentState()) {
             case CONNECTED:
-                logTextView.setText("Connected");
+                //logTextView.setText("Connected");
+                changeLoginButtonState(1);
+                String appid = PusherClientInstance.getInstance(this).curAppid;
+                //String c = PusherClientInstance.getInstance(this).curAppid;
+                logTextView.append("\nPusher Client: Connected. Using pusher_app_key : " + appid);
+
+                canConfig = true;
+                invalidateOptionsMenu();
+
                 break;
             case DISCONNECTED:
-                logTextView.setText("Disconnected");
+                canConfig = false;
+                invalidateOptionsMenu();
+                changeLoginButtonState(-1);
+                logTextView.append("\nPusher Client: Disconnected. Please Check Pusher's configurations");
                 break;
             case CONNECTING:
-                logTextView.setText("Connecting");
+                logTextView.append("\nConnecting..");
                 break;
         }
+    }
+
+    private void writeValueToPref(String key, String value) {
+        new LogTask("writeValueToPref|value:" + value + ",key:" + key, TAB, LogTask.LOG_I);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putString(key, value);
+        editor.apply();
     }
 
     private interface ProfileQuery {
@@ -498,8 +588,14 @@ public class LoginActivity extends BaseActivity implements LoaderCallbacks<Curso
             if (success) {
                 Toast.makeText(LoginActivity.this, "Retrieved Hashid: " + myHashUserId, Toast.LENGTH_SHORT).show();
 
-                mEmailSignInButton.setText("MyId: " + myHashUserId);
-                mEmailSignInButton.setEnabled(false);
+                logTextView.setText("MyId: " + myHashUserId);
+
+                ///save login info
+                writeValueToPref(USER_MAIL, mEmail);
+                writeValueToPref(USER_PASS, mPassword);
+                writeValueToPref(USER_LOGIN_HASH_VALUE, myHashUserId);
+
+                //mEmailSignInButton.setEnabled(false);
 
                 mEmailView.setEnabled(false);
                 mPasswordView.setEnabled(false);
@@ -511,6 +607,7 @@ public class LoginActivity extends BaseActivity implements LoaderCallbacks<Curso
                 connect(myHashUserId);
 
             } else {
+                canConfig = false;
                 mPasswordView.setError(getString(R.string.error_incorrect_password));
                 mPasswordView.requestFocus();
             }

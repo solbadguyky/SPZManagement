@@ -57,10 +57,10 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
     private android.app.ActionBar actionBar;
     //private Snackbar snackbar;
     private Button submitButton, connectButton, checkChannelButton;
-    private EditText appIdEditText, channelEditText, clusterEditText;
+    private EditText channelEditText;
+    private EditText appIdEditText, clusterEditText;
     private TextView conenctionTextView;
     private Bundle pusherInfoBundle;
-    private String appId, cluster;
     private String old_appId, old_cluster;
     private BaseChannelAdapter baseAdapter;
     ///pusher instance
@@ -152,7 +152,6 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
         switch (item.getItemId()) {
             case R.id.configuration_menu_save:
                 save();
-
                 return true;
         }
         return super.onOptionsItemSelected(item);
@@ -162,9 +161,6 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
     public void initValue() {
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
         pusherInfoBundle = new Bundle();
-        appId = new String();
-        cluster = new String();
-
         pusherHelper = new PusherHelper(this);
 
         ///retrieve old prefs
@@ -228,8 +224,26 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
         channelEditText.addTextChangedListener(new EditTextChangeListener(channelEditText));
         clusterEditText.addTextChangedListener(new EditTextChangeListener(clusterEditText));
 
-        ///snackbar
+        connectButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                connect(getAppId(), getCluster());
+            }
+        });
 
+        submitButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                submitChannel();
+            }
+        });
+
+        checkChannelButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                getChannels();
+            }
+        });
 
         ///pusher id
         if (old_appId != null) {
@@ -258,31 +272,32 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
                     .getState() == ConnectionState.DISCONNECTING) {
                 connect();
             } else {
-                onConnectionStateChange(new ConnectionStateChange(ConnectionState.CONNECTING, ConnectionState.CONNECTED));
+                onConnectionStateChange(new ConnectionStateChange(ConnectionState.CONNECTING,
+                        ConnectionState.CONNECTED));
             }
         }
 
-        connectButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                connect();
-            }
-        });
 
-        submitButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                submitChannel();
-            }
-        });
+    }
 
-        checkChannelButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                getChannels();
-            }
-        });
+    private String getAppId() {
+        String appid = appIdEditText.getText().toString();
+        if (appid.isEmpty()) {
+            appIdEditText.setError("This field is required");
+            return null;
+        } else {
+            return appid;
+        }
+    }
 
+    private String getCluster() {
+        String cluster = clusterEditText.getText().toString();
+        if (cluster.isEmpty()) {
+            appIdEditText.setError("This field is required");
+            return null;
+        } else {
+            return cluster;
+        }
     }
 
     private void onConnectionStateChange(ConnectionStateChange connectionStateChange) {
@@ -305,10 +320,11 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
 
         appIdEditText.setEnabled(false);
         clusterEditText.setEnabled(false);
-
     }
 
     private void connected() {
+        save();
+
         connectButton.setEnabled(true);
         submitButton.setEnabled(true);
 
@@ -335,19 +351,13 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
         connectButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                connect();
+                connect(getAppId(), getCluster());
             }
         });
     }
 
-    private void checkValueAgain() {
-        appId = appIdEditText.getText().toString();
-        cluster = clusterEditText.getText().toString();
-    }
-
     private void submitChannel() {
         new LogTask("submitBundle", TAB, LogTask.LOG_I);
-        checkValueAgain();
         try {
             if (getChannelString() == null) {
                 return;
@@ -412,62 +422,11 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
 
     private void connect() {
         new LogTask("connect", TAB, LogTask.LOG_I);
-        checkValueAgain();
-        if (!appId.isEmpty() && !cluster.isEmpty()) {
-            writeValueToPref(appId, PusherHelper.CLIENT_APPID);
-            writeValueToPref(cluster, PusherHelper.CLIENT_CLUSTER);
-            onConnecting();
-        } else {
-            if (old_appId != null && old_cluster != null) {
-                onConnecting();
-            } else {
-                addMessage(new QueueMessage("Please Enter Values Before Connecting!"));
-            }
-        }
+        pusherHelper.connect();
     }
 
-    private void onConnecting() {
-        new LogTask("onConnecting", TAB, LogTask.LOG_I);
-        pusherHelper.resume();
-        /*pusherHelper.checkConnection(new ConnectionEventListener() {
-            @Override
-            public void onConnectionStateChange(final ConnectionStateChange connectionStateChange) {
-                new LogTask("connect|ConnectionEventListener,connectionStateChange:" + connectionStateChange.getCurrentState().name(), TAB, LogTask.LOG_I);
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        //conenctionTextView.setText(connectionStateChange.getCurrentState().name());
-
-                        if (connectionStateChange.getCurrentState() == ConnectionState.CONNECTED) {
-                            conenctionTextView.setText(connectionStateChange.getCurrentState().name());
-                            snackbar.setText("Successfully Connected!").show();
-                            enableEventView();
-                            getChannels();
-                        } else if (connectionStateChange.getCurrentState() == ConnectionState.DISCONNECTED) {
-                            snackbar.setAction("Retry", new View.OnClickListener() {
-                                @Override
-                                public void onClick(View v) {
-                                    connect();
-                                }
-                            }).setText("Disconnected").show();
-                        }
-                    }
-                });
-            }
-
-            @Override
-            public void onError(String s, String s1, final Exception e) {
-                new LogTask("connect|ConnectionEventListener,error,s1:" + s1 + ",\ns:" + s + ",\ne:" + e.getMessage(), TAB, LogTask.LOG_I);
-
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        conenctionTextView.setText(e.getMessage());
-                    }
-                });
-
-            }
-        }); */
+    private void connect(String appid, String cluster) {
+        pusherHelper.connect(appid, cluster);
     }
 
     private void subcribeAllChannels(final Channel mChannel, Channel.Event mEvent) throws Exception {
@@ -512,10 +471,13 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
         alertDiaglogBuilder.setPositiveButton("Save", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-
                 ChannelRecord.saveAllRecords();
 
-
+                ///saved pusher appid/cluster
+                if (getAppId() != null && getCluster() != null) {
+                    writeValueToPref(getAppId(), PusherHelper.CLIENT_APPID);
+                    writeValueToPref(getCluster(), PusherHelper.CLIENT_CLUSTER);
+                }
             }
         });
 
@@ -664,18 +626,7 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
 
         @Override
         public void afterTextChanged(Editable s) {
-            switch (viewId) {
-                case R.id.menu_editText_AppID:
-                    appId = appIdEditText.getText().toString();
-                    break;
-                case R.id.menu_editText_Channel:
 
-                    break;
-
-                case R.id.menu_editText_Cluster:
-                    cluster = clusterEditText.getText().toString();
-                    break;
-            }
 
         }
     }

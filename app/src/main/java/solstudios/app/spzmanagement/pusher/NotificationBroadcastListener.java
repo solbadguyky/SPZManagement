@@ -57,7 +57,7 @@ public class NotificationBroadcastListener extends BroadcastReceiver {
 					}
 					if (isConnected) {
 						PusherHelper pusherHelper = new PusherHelper(context);
-						pusherHelper.checkPusherConnection();
+						//pusherHelper.checkPusherConnection();
 					}
 				}
 

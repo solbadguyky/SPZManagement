@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
+import android.support.annotation.Nullable;
 
 import com.google.gson.Gson;
 import com.pusher.client.Pusher;
@@ -19,55 +20,76 @@ import solstudios.app.spzmanagement.PusherBroadcast;
 public class PusherClientInstance {
     public static final String TAB = "PusherClientInstance";
     private static PusherClientInstance mPusherClientInstance;
+    public String curAppid, curCluster;
     private Context context;
     private Pusher pusher;
-    private String currentAppID, currentCluster;
 
-    private PusherClientInstance(Context context) {
+    private PusherClientInstance(Context context, @Nullable String appid, @Nullable String cluster) {
         this.context = context;
-
-        if (pusher == null) {
-            ///create new pusher
+        ///create new pusher
+        if (appid != null && cluster != null) {
+            pusher = createNewPusher(appid, cluster);
+        } else {
             pusher = createNewPusher();
         }
+
     }
 
     public static synchronized PusherClientInstance getInstance(Context context) {
         if (null == mPusherClientInstance) {
-            mPusherClientInstance = new PusherClientInstance(context);
+            mPusherClientInstance = new PusherClientInstance(context, null, null);
         }
         return mPusherClientInstance;
     }
+
+    public static synchronized PusherClientInstance getInstance(Context context,
+                                                                @Nullable String appid,
+                                                                @Nullable String cluster) {
+        if (mPusherClientInstance == null) {
+            mPusherClientInstance = new PusherClientInstance(context, appid, cluster);
+        } else {
+            mPusherClientInstance.disconnect(mPusherClientInstance.getCurrentPusherInstance());
+            mPusherClientInstance = new PusherClientInstance(context, appid, cluster);
+
+        }
+        return mPusherClientInstance;
+    }
+
 
     public static synchronized PusherClientInstance newInstance(Context context) {
         if (mPusherClientInstance != null) {
             mPusherClientInstance.disconnect(mPusherClientInstance.getCurrentPusherInstance());
         }
 
-        mPusherClientInstance = new PusherClientInstance(context);
+        mPusherClientInstance = new PusherClientInstance(context, null, null);
         return mPusherClientInstance;
+    }
+
+    private Pusher createNewPusher(String appid, String cluster) {
+        return create(appid, cluster);
     }
 
     private Pusher createNewPusher() {
         SharedPreferences sharedPreferences = PreferenceManager
                 .getDefaultSharedPreferences(context);
-        PusherOptions options = new PusherOptions();
-
         String appID = sharedPreferences.getString(
                 PusherHelper.CLIENT_APPID,
                 PusherHelper.DEFAULT_CLIENT_APPID);
         String cluster = sharedPreferences.getString(
                 PusherHelper.CLIENT_CLUSTER,
                 PusherHelper.DEFAULT_CLIENT_APPID);
+        return create(appID, cluster);
+    }
 
-        new LogTask("createNewPusher|appid:" + appID + " ,cluster:" + cluster, TAB, LogTask.LOG_I);
-
+    private Pusher create(String appid, String cluster) {
+        PusherOptions options = new PusherOptions();
+        new LogTask("createNewPusher|appid:" + appid + " ,cluster:" + cluster, TAB, LogTask.LOG_I);
         options.setCluster(cluster);
-        pusher = new Pusher(appID, options);
+        pusher = new Pusher(appid, options);
 
-        /// save instance
-        currentAppID = appID;
-        currentCluster = cluster;
+        ///save instance
+        curAppid = appid;
+        curCluster = cluster;
 
         return pusher;
     }

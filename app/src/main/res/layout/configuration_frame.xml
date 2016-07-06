@@ -38,17 +38,26 @@
             android:layout_height="match_parent"
             android:orientation="vertical">
 
-            <EditText
-                android:id="@+id/menu_editText_AppID"
+            <android.support.design.widget.TextInputLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="App ID" />
+                android:layout_height="wrap_content">
 
-            <EditText
-                android:id="@+id/menu_editText_Cluster"
+                <EditText
+                    android:id="@+id/menu_editText_AppID"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+            </android.support.design.widget.TextInputLayout>
+
+            <android.support.design.widget.TextInputLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Cluster" />
+                android:layout_height="wrap_content">
+
+                <EditText
+                    android:id="@+id/menu_editText_Cluster"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+
+            </android.support.design.widget.TextInputLayout>
 
             <RelativeLayout
                 android:layout_width="match_parent"
@@ -109,7 +118,7 @@
                 android:id="@+id/menu_button_CheckChannel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Reconnect All Channel" />
+                android:text="Refresh" />
 
             <android.support.v7.widget.RecyclerView
                 android:id="@+id/configuration_frame_recyclerView"
