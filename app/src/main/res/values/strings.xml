@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">SPZManagement</string>
+    <string name="app_name">Bạn của sếp Tùng</string>
 
     <!-- Strings related to login -->
     <string name="prompt_email">Email</string>
@@ -15,4 +15,8 @@
     </string>
     <string name="action_settings">Cài đặt</string>
     <string name="action_save">Lưu</string>
+    <string name="action_sign_out">Đăng xuất</string>
+
+    <!-- Google Sign API -->
+    <string name="server_client_id">847124273925-1sajbgnog6v97lelh85rlmev2s8h3ret.apps.googleusercontent.com</string>
 </resources>

@@ -19,6 +19,9 @@ import solstudios.app.spzmanagement.PusherBroadcast;
 
 public class PusherClientInstance {
     public static final String TAB = "PusherClientInstance";
+    public static final String THROWABLE_CONNECTED = "Aldready Connected";
+    public static final String THROWABLE_CHANNEL_SUBSCRIBED = "Aldready SUBSCRIBED CHANNEL";
+
     private static PusherClientInstance mPusherClientInstance;
     public String curAppid, curCluster;
     private Context context;
@@ -50,8 +53,8 @@ public class PusherClientInstance {
         } else {
             mPusherClientInstance.disconnect(mPusherClientInstance.getCurrentPusherInstance());
             mPusherClientInstance = new PusherClientInstance(context, appid, cluster);
-
         }
+
         return mPusherClientInstance;
     }
 
@@ -62,6 +65,7 @@ public class PusherClientInstance {
         }
 
         mPusherClientInstance = new PusherClientInstance(context, null, null);
+
         return mPusherClientInstance;
     }
 

@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "847124273925",
+    "project_id": "spz-management-af19c"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:847124273925:android:83b0476372235c10",
+        "android_client_info": {
+          "package_name": "solstudios.app.spzmanagement"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "847124273925-7mj1qpet4qk0npgkfh48rrh58slfm7f2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "solstudios.app.spzmanagement",
+            "certificate_hash": "5D960575CF76BA32EDDF308071831B40B681AE1F"
+          }
+        },
+        {
+          "client_id": "847124273925-1sajbgnog6v97lelh85rlmev2s8h3ret.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDIo7H0lyNeH5_rpF2NhXu8CbWb4ch4Ztg"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 1,
+          "other_platform_oauth_client": []
+        },
+        "ads_service": {
+          "status": 1
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

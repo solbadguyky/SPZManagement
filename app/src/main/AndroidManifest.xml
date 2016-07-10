@@ -7,6 +7,7 @@
     <uses-permission android:name="android.permission.READ_PROFILE" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
         android:name=".MyApplication"
@@ -44,6 +45,16 @@
         <activity
             android:name=".LogActivity"
             android:theme="@style/NoActionBarTheme" />
+
+        <receiver android:name=".pusher.NotificationBroadcastListener">
+            <intent-filter>
+                <action android:name="solstudios.app.spzmanagement.onSubcriptionEvent" />
+                <action android:name="solstudios.app.spzmanagement.onSubcriptionChannel" />
+                <action android:name="solstudios.app.spzmanagement.onDefaultConnectionChanged" />
+                <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

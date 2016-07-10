@@ -18,11 +18,13 @@ public abstract class PusherBroadcast extends BroadcastReceiver {
 
     public static final String INTENT_SUBSCRIPTION = "subscription intent";
     public static final String INTENT_BINDING = "binding intent";
+    public static final String INTENT_UNBINDING = "binding intent";
     public static final String INTENT_SUBSCRIPTION_SUCCESS = "subscription success intent";
     public static final String INTENT_CONNECTION = "connection intent";
 
 
     public static final String ACTION_BIND_EVENT = "onBindEvent";
+    public static final String ACTION_UNBIND_EVENT = "onUnBindEvent";
     public static final String ACTION_SUBSCRIPTION_EVENT = "onSubcriptionEvent";
     public static final String ACTION_SUBSCRIPTION_CHANNEL = "onSubcriptionChannel";
     public static final String ACTION_CONNECTION_CHANGED = "onDefaultConnectionChanged";
@@ -47,6 +49,8 @@ public abstract class PusherBroadcast extends BroadcastReceiver {
 
     public abstract void onBindedEvent(String channel, String event);
 
+    public abstract void onUnBindedEvent(String channel, String event);
+
 
     abstract void onError(Exception e);
 
@@ -59,6 +63,8 @@ public abstract class PusherBroadcast extends BroadcastReceiver {
     private void getPusherIntent(Intent intent) {
         if (intent.hasExtra(INTENT_BINDING)) {
             getBindBundle(intent.getBundleExtra(INTENT_BINDING));
+        } else if (intent.hasExtra(INTENT_UNBINDING)) {
+            getUnBindBundle(intent.getBundleExtra(INTENT_UNBINDING));
         } else if (intent.hasExtra(INTENT_SUBSCRIPTION)) {
             getSubcriptionBundle(intent.getBundleExtra(INTENT_SUBSCRIPTION));
         } else if (intent.hasExtra(INTENT_SUBSCRIPTION_SUCCESS)) {
@@ -87,7 +93,6 @@ public abstract class PusherBroadcast extends BroadcastReceiver {
         }
     }
 
-
     private void getBindBundle(Bundle bundle) {
         new LogTask("getBindBundle", TAB, LogTask.LOG_I);
         String channel = bundle.getString(PusherBroadcast.SUBSCRIPTION_CHANNEL, null);
@@ -98,8 +103,16 @@ public abstract class PusherBroadcast extends BroadcastReceiver {
         }
     }
 
+    private void getUnBindBundle(Bundle bundle) {
+        new LogTask("getUnBindBundle", TAB, LogTask.LOG_I);
+        String channel = bundle.getString(PusherBroadcast.SUBSCRIPTION_CHANNEL, null);
+        if (channel != null) {
+            onUnBindedEvent(channel, null);
+        }
+    }
+
     private void getConnectionIntent(String jsonConnectionString) {
-        new LogTask("getSubcriptionBundle", TAB, LogTask.LOG_I);
+        new LogTask("getConnectionIntent", TAB, LogTask.LOG_I);
         try {
             ConnectionStateChange connectionStateChange = new Gson().fromJson(jsonConnectionString, ConnectionStateChange.class);
             onDefaultConnectionChanged(connectionStateChange);

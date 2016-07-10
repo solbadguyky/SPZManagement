@@ -133,42 +133,24 @@ public class PusherHelper {
 
     public void connect() {
         new LogTask("checkPusherConnection", TAB, LogTask.LOG_I);
-        resume();
-    }
 
-    public void connectToPusherClient(@Nullable SubscriptionEventListener subscriptionEventListener)
-            throws Exception {
         Pusher pusher = PusherClientInstance.getInstance(context).getCurrentPusherInstance();
-        for (solstudios.app.spzmanagement.Channel mChannel : ChannelStack.getInstance().getChannelStack()) {
-            new LogTask("getChannels|mChannel:" + mChannel.getChannelName(), TAB, LogTask.LOG_D);
-            if (pusher.getChannel(mChannel.getChannelName()) == null) {
-                Channel pchannel = pusher.subscribe(mChannel.getChannelName(), new DefaultSubscriptionChannelListener());
-                /*for (solstudios.app.spzmanagement.Channel.Event mEvent : mChannel.getEvents()) {
-                    new LogTask("getChannels|mEvent:" + mEvent.getEventName(), TAB, LogTask.LOG_D);
-                    if (subscriptionEventListener != null) {
-                        pchannel.bind(mEvent.getEventName(), subscriptionEventListener);
-                    } else {
-                        pchannel.bind(mEvent.getEventName(), new DefaultSubscriptionEventListener());
-                    }
+        if (pusher.getConnection()
+                .getState() == ConnectionState.CONNECTED) {
+            //checkConnection();
 
-                }*/
-            } else {
-               /* for (solstudios.app.spzmanagement.Channel.Event mEvent : mChannel.getEvents()) {
-                    new LogTask("getChannels|mEvent:" + mEvent.getEventName(), TAB, LogTask.LOG_D);
-                    if (!pusher.getChannel(mChannel.getChannelName()).isSubscribed()) {
-                        if (subscriptionEventListener != null) {
-                            pusher.getChannel(mChannel.getChannelName()).bind(mEvent.getEventName(), subscriptionEventListener);
-                        } else {
-                            pusher.getChannel(mChannel.getChannelName()).bind(mEvent.getEventName(), new DefaultSubscriptionEventListener());
-                        }
-                    }
-                }
- */
+            ///
+            ConnectionStateChange connectionStateChange = new ConnectionStateChange(ConnectionState.CONNECTING, ConnectionState.CONNECTED);
+            Intent onConnectionStateChangeIntent = new Intent(PusherBroadcast.getActionIntent(PusherBroadcast.ACTION_CONNECTION_CHANGED));
+            onConnectionStateChangeIntent.putExtra(PusherBroadcast.CONNECTION_STATE_CHANGED, new Gson().toJson(connectionStateChange));
+            context.sendBroadcast(onConnectionStateChangeIntent);
+        } else {
+            try {
+                resume();
+            } catch (Throwable throwable) {
+                throwable.printStackTrace();
             }
-
         }
-        //pchannel.bind(event.getEventName(), subscriptionEventListener);
-        //pusher.connect(connectionEventListener, ConnectionState.ALL);
     }
 
     private void getChannels() {
@@ -186,11 +168,11 @@ public class PusherHelper {
                              @Nullable SubscriptionEventListener subscriptionEventListener) {
         Pusher pusher = PusherClientInstance.getInstance(context).getCurrentPusherInstance();
         if (pusher.getConnection().getState() == ConnectionState.CONNECTED
-                || pusher.getConnection()
-                .getState() == ConnectionState.CONNECTING) {
+                || pusher.getConnection().getState() == ConnectionState.CONNECTING) {
             Channel pchannel;
             if (pusher.getChannel(channel.getChannelName()) == null) {
-                pchannel = pusher.subscribe(channel.getChannelName(), new DefaultSubscriptionChannelListener());
+                pchannel = pusher.subscribe(channel.getChannelName(),
+                        new DefaultSubscriptionChannelListener(), "default-event");
             } else {
                 pchannel = pusher.getChannel(channel.getChannelName());
             }
@@ -199,6 +181,30 @@ public class PusherHelper {
             new LogTask("subcribe|error: channel is disconnected", TAB, LogTask.LOG_E);
             // checkConnection();
             return null;
+        }
+    }
+
+    public void subscribe(solstudios.app.spzmanagement.Channel channel) {
+        Pusher pusher = PusherClientInstance.getInstance(context).getCurrentPusherInstance();
+        if (pusher.getConnection().getState() == ConnectionState.CONNECTED
+                || pusher.getConnection()
+                .getState() == ConnectionState.CONNECTING) {
+            if (pusher.getChannel(channel.getChannelName()) == null) {
+                pusher.subscribe(channel.getChannelName(), new DefaultSubscriptionChannelListener());
+            }
+        }
+    }
+
+    public void subscribe(String channelName, String... eventNames) throws Throwable {
+        Pusher pusher = PusherClientInstance.getInstance(context).getCurrentPusherInstance();
+        if (pusher.getConnection().getState() == ConnectionState.CONNECTED
+                || pusher.getConnection()
+                .getState() == ConnectionState.CONNECTING) {
+            if (pusher.getChannel(channelName) == null) {
+                pusher.subscribe(channelName, new DefaultSubscriptionChannelListener(), eventNames);
+            } else {
+                throw new Throwable(PusherClientInstance.THROWABLE_CHANNEL_SUBSCRIBED);
+            }
         }
     }
 
@@ -230,8 +236,8 @@ public class PusherHelper {
 
 
     public void bind(solstudios.app.spzmanagement.Channel mChannel, solstudios.app.spzmanagement.Channel.Event event,
-                     @Nullable SubscriptionEventListener subscriptionEventListener) {
-        new LogTask("bind|channel:" + mChannel.getChannelName() + ",event:" + event.getEventName(), TAB, LogTask.LOG_E);
+                     @Nullable ChannelEventListener channelEventListener) {
+        new LogTask("bind|channel:" + mChannel.getChannelName() + ",event:" + event.getEventName(), TAB, LogTask.LOG_D);
         Pusher pusher = PusherClientInstance.getInstance(context).getCurrentPusherInstance();
         if (pusher.getChannel(mChannel.getChannelName()) == null
                 || !pusher.getChannel(mChannel.getChannelName()).isSubscribed()) {
@@ -239,20 +245,11 @@ public class PusherHelper {
             return;
         } else {
             Channel channel = pusher.getChannel(mChannel.getChannelName());
-
-            if (subscriptionEventListener != null) {
-                channel.bind(event.getEventName(), subscriptionEventListener);
+            if (channelEventListener != null) {
+                channel.bind(event.getEventName(), channelEventListener);
             } else {
-                channel.bind(event.getEventName(), new DefaultSubscriptionEventListener());
+                channel.bind(event.getEventName(), new DefaultBindingEventListener());
             }
-
-
-            Intent onEventItent = new Intent(PusherBroadcast.getActionIntent(PusherBroadcast.ACTION_BIND_EVENT));
-            Bundle subscriptionBundle = new Bundle();
-            subscriptionBundle.putString(PusherBroadcast.SUBSCRIPTION_CHANNEL, mChannel.getChannelName());
-            subscriptionBundle.putString(PusherBroadcast.SUBSCRIPTION_EVENT, event.getEventName());
-            onEventItent.putExtra(PusherBroadcast.INTENT_BINDING, subscriptionBundle);
-            context.sendBroadcast(onEventItent);
         }
 
     }
@@ -263,7 +260,7 @@ public class PusherHelper {
         if (subscriptionEventListener != null) {
             pusherChannel.bind(event.getEventName(), subscriptionEventListener);
         } else {
-            pusherChannel.bind(event.getEventName(), new DefaultSubscriptionEventListener());
+            pusherChannel.bind(event.getEventName(), new DefaultBindingEventListener());
         }
 
         Intent onEventItent = new Intent(PusherBroadcast.getActionIntent(PusherBroadcast.ACTION_BIND_EVENT));
@@ -275,14 +272,12 @@ public class PusherHelper {
 
     }
 
-    public void subscribe(solstudios.app.spzmanagement.Channel channel) {
-        Pusher pusher = PusherClientInstance.getInstance(context).getCurrentPusherInstance();
-        if (pusher.getConnection().getState() == ConnectionState.CONNECTED
-                || pusher.getConnection()
-                .getState() == ConnectionState.CONNECTING) {
-            if (pusher.getChannel(channel.getChannelName()) == null) {
-                pusher.subscribe(channel.getChannelName(), new DefaultSubscriptionChannelListener());
-            }
+    public void unbind(Channel pusherChannel, solstudios.app.spzmanagement.Channel.Event event, @Nullable ChannelEventListener channelEventListener) {
+        new LogTask("unBind|pusherChannel:" + pusherChannel.getName() + ",event:" + event.getEventName(), TAB, LogTask.LOG_E);
+        if (channelEventListener != null) {
+            pusherChannel.unbind(event.getEventName(), channelEventListener);
+        } else {
+            pusherChannel.unbind(event.getEventName(), new DefaultBindingEventListener());
         }
     }
 
@@ -353,23 +348,13 @@ public class PusherHelper {
     /**
      * Kết nối pusher-client
      */
-    public void resume() {
+    public void resume() throws Throwable {
         new LogTask("resume", TAB, LogTask.LOG_I);
-
         Pusher pusher = PusherClientInstance.getInstance(context).getCurrentPusherInstance();
-        if (pusher.getConnection()
-                .getState() == ConnectionState.CONNECTED) {
-            //checkConnection();
-
-            ///
-            ConnectionStateChange connectionStateChange = new ConnectionStateChange(ConnectionState.CONNECTING, ConnectionState.CONNECTED);
-            Intent onConnectionStateChangeIntent = new Intent(PusherBroadcast.getActionIntent(PusherBroadcast.ACTION_CONNECTION_CHANGED));
-            onConnectionStateChangeIntent.putExtra(PusherBroadcast.CONNECTION_STATE_CHANGED, new Gson().toJson(connectionStateChange));
-            context.sendBroadcast(onConnectionStateChangeIntent);
-        } else {
+        if (pusher.getConnection().getState() == ConnectionState.CONNECTED) {
+            throw new Throwable(PusherClientInstance.THROWABLE_CONNECTED);
+        } else
             onResume();
-        }
-
     }
 
     private void onResume() {
@@ -415,6 +400,35 @@ public class PusherHelper {
 
         @Override
         public void onEvent(String s, String s1, String s2) {
+            new LogTask("onEvent", TAB, LogTask.LOG_I);
+            Intent onEventItent = new Intent(PusherBroadcast.getActionIntent(PusherBroadcast.ACTION_SUBSCRIPTION_CHANNEL));
+
+            Bundle subscriptionBundle = new Bundle();
+            subscriptionBundle.putString(PusherBroadcast.SUBSCRIPTION_CHANNEL, s);
+            subscriptionBundle.putString(PusherBroadcast.SUBSCRIPTION_EVENT, s1);
+            subscriptionBundle.putString(PusherBroadcast.SUBSCRIPTION_MESSAGE, s2);
+
+            onEventItent.putExtra(PusherBroadcast.INTENT_SUBSCRIPTION, subscriptionBundle);
+
+            context.sendBroadcast(onEventItent);
+
+        }
+    }
+
+    public class DefaultBindingEventListener implements ChannelEventListener {
+        @Override
+        public void onSubscriptionSucceeded(String s) {
+            new LogTask("DefaultBindingEventListener,String:" + s, TAB, LogTask.LOG_D);
+            Intent onEventItent = new Intent(PusherBroadcast.getActionIntent(PusherBroadcast.ACTION_BIND_EVENT));
+            Bundle subscriptionBundle = new Bundle();
+            subscriptionBundle.putString(PusherBroadcast.SUBSCRIPTION_CHANNEL, s);
+            onEventItent.putExtra(PusherBroadcast.INTENT_BINDING, subscriptionBundle);
+            context.sendBroadcast(onEventItent);
+        }
+
+        @Override
+        public void onEvent(String s, String s1, String s2) {
+            new LogTask("onEvent", TAB, LogTask.LOG_I);
             Intent onEventItent = new Intent(PusherBroadcast.getActionIntent(PusherBroadcast.ACTION_SUBSCRIPTION_CHANNEL));
 
             Bundle subscriptionBundle = new Bundle();

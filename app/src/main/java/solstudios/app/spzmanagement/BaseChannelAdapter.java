@@ -73,6 +73,7 @@ public class BaseChannelAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         itemView.textViewChannelName.setText(channel.getChannelName());
         itemView.textViewChannelEvents.setText("(" + channel.getEvents().size() + " event)");
         itemView.buttonAction.setOnClickListener(new ButtonListener(channel));
+        itemView.buttonAction.setOnLongClickListener(new ButtonLongClickListener(channel));
 
         ///check channel's subscription
         if (pusherHelper.isSubcribed(channel)) {
@@ -95,9 +96,11 @@ public class BaseChannelAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
 
     public interface BaseAdapterInterface {
         void onChannelButtonClick(Channel channel);
+
+        void onChannelButtonLongClick(Channel channel);
     }
 
-    public class ButtonListener implements View.OnClickListener {
+    private class ButtonListener implements View.OnClickListener {
         private Channel channel;
 
         public ButtonListener(Channel channel) {
@@ -111,5 +114,21 @@ public class BaseChannelAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             }
         }
 
+    }
+
+    private class ButtonLongClickListener implements View.OnLongClickListener {
+        private Channel channel;
+
+        public ButtonLongClickListener(Channel channel) {
+            this.channel = channel;
+        }
+
+        @Override
+        public boolean onLongClick(View v) {
+            if (baseAdapterInterface != null) {
+                baseAdapterInterface.onChannelButtonLongClick(channel);
+            }
+            return false;
+        }
     }
 }

@@ -3,6 +3,7 @@ package solstudios.app.spzmanagement;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.widget.TextView;
@@ -22,6 +23,21 @@ public class LogActivity extends BaseActivity {
 
     private PusherBroadcast pusherBroadcastReceiver;
     private PusherHelper pusherHelper;
+    private SharedPreferences preferences;
+    private String logString;
+
+    public static final void WriteLog(Context context, String message) {
+        SharedPreferences defaultSharedPreference = context.getSharedPreferences(TAB, Context.MODE_PRIVATE);
+        String oldLog = defaultSharedPreference.getString(TAB, "init...");
+        StringBuilder logBuilder = new StringBuilder(oldLog);
+
+        String appendingMessage = "(Time:" + java.util.Calendar.getInstance().getTimeInMillis() + ") " + message;
+
+        logBuilder.append("\n" + appendingMessage);
+        SharedPreferences.Editor editor = defaultSharedPreference.edit();
+        editor.putString(TAB, logBuilder.toString());
+        editor.commit();
+    }
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -32,6 +48,10 @@ public class LogActivity extends BaseActivity {
     @Override
     public void initValue() {
         pusherHelper = new PusherHelper(this);
+        preferences = this.getSharedPreferences(TAB, MODE_PRIVATE);
+
+        logString = preferences.getString(TAB, null);
+
     }
 
     @Override
@@ -46,7 +66,9 @@ public class LogActivity extends BaseActivity {
 
     @Override
     public void setupView() {
-
+        if (logString != null) {
+            logMessageTextView.setText(logString);
+        }
     }
 
     @Override
@@ -84,6 +106,11 @@ public class LogActivity extends BaseActivity {
                     new LogTask("onBindedEvent|channelName:" + channel + ",event:" + event,
                             TAB, LogTask.LOG_I);
                     //bindSucceeded(channel, event);
+                }
+
+                @Override
+                public void onUnBindedEvent(String channel, String event) {
+
                 }
 
                 @Override
@@ -130,7 +157,10 @@ public class LogActivity extends BaseActivity {
 
     private void onSubscriptionEvent(String channel, String event, String message) {
         String stringBuilder = new String();
-        stringBuilder = "--------------------" + "\n" + "Channel: " + channel + "\n" + "Event:" + event + "\n" + "Message:" + message;
+        stringBuilder = "\n--------------------" + "\n" + "Channel: " + channel
+                + "\n" + "Event:" + event + "\n"
+                + "Message:" + message;
         logMessageTextView.append(stringBuilder + "\n");
+        WriteLog(this, stringBuilder);
     }
 }

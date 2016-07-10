@@ -12,6 +12,7 @@ import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.support.annotation.NonNull;
 import android.support.design.widget.CoordinatorLayout;
 import android.support.design.widget.Snackbar;
 import android.support.v4.content.ContextCompat;
@@ -29,6 +30,8 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient.OnConnectionFailedListener;
 import com.pusher.client.Pusher;
 import com.pusher.client.connection.ConnectionState;
 import com.pusher.client.connection.ConnectionStateChange;
@@ -43,8 +46,9 @@ import solstudios.app.spzmanagement.pusher.PusherHelper;
  * Created by solbadguyky on 6/30/16.
  */
 public class ConfigurationActivity extends BaseActivity implements BaseChannelAdapter.BaseAdapterInterface,
-        EventDialog.IEventDialogItem, ChannelStack.IChannelStack, InputFragment.IFragmentInput {
+        EventDialog.IEventDialogItem, ChannelStack.IChannelStack, InputFragment.IFragmentInput, OnConnectionFailedListener {
     public static final String TAB = "Configuration Activity";
+    public static final String DEFAULT_CHANNEL = "Default Channel";
     ///snackbar queue messages
     Queue<QueueMessage> queueMessages;
     private SharedPreferences sharedPreferences;
@@ -68,6 +72,8 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
     ///pusher broadcaster
     private PusherBroadcast pusherBroadcastReceiver;
     private QueueMessage.SnackbarManager snackbarManager;
+    private GoogleSignIn googleSignIn;
+    private String defaultChannelKey;
 
     @Override
     protected void onResume() {
@@ -107,6 +113,12 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
                 }
 
                 @Override
+                public void onUnBindedEvent(String channel, String event) {
+                    new LogTask("onUnBindedEvent|channel:" + channel + ",event:" + event,
+                            TAB, LogTask.LOG_I);
+                }
+
+                @Override
                 void onError(Exception e) {
 
                 }
@@ -120,6 +132,7 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
             IntentFilter filterPusherMessages = new IntentFilter();
             filterPusherMessages.addAction(PusherBroadcast.getActionIntent(PusherBroadcast.ACTION_SUBSCRIPTION_CHANNEL));
             filterPusherMessages.addAction(PusherBroadcast.getActionIntent(PusherBroadcast.ACTION_BIND_EVENT));
+            filterPusherMessages.addAction(PusherBroadcast.getActionIntent(PusherBroadcast.ACTION_UNBIND_EVENT));
             filterPusherMessages.addAction(PusherBroadcast.getActionIntent(PusherBroadcast.ACTION_SUBSCRIPTION_EVENT));
             filterPusherMessages.addAction(PusherBroadcast.getActionIntent(PusherBroadcast.ACTION_CONNECTION_CHANGED));
             this.registerReceiver(pusherBroadcastReceiver, filterPusherMessages);
@@ -166,6 +179,11 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
         ///retrieve old prefs
         old_appId = sharedPreferences.getString(PusherHelper.CLIENT_APPID, null);
         old_cluster = sharedPreferences.getString(PusherHelper.CLIENT_CLUSTER, null);
+
+        if (getIntent().getStringExtra(DEFAULT_CHANNEL) != null) {
+            defaultChannelKey = getIntent().getStringExtra(DEFAULT_CHANNEL);
+        }
+
     }
 
     @Override
@@ -190,7 +208,7 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
 
         actionBar = getActionBar();
         final Drawable upArrow = ContextCompat.getDrawable(this,
-                R.drawable.abc_ic_ab_back_mtrl_am_alpha);
+                R.drawable.common_google_signin_btn_icon_dark_disabled);
         upArrow.setColorFilter(getResources().getColor(R.color.White),
                 PorterDuff.Mode.SRC_ATOP);
         getSupportActionBar().setHomeAsUpIndicator(upArrow);
@@ -356,6 +374,18 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
         });
     }
 
+    private void subcribeChannel(Channel channel) {
+        new LogTask("submitBundle", TAB, LogTask.LOG_I);
+        // subcribeChannel(mchannel, mEvent);
+        if (pusherHelper.isSubcribed(channel)) {
+            QueueMessage queueMessage = new QueueMessage();
+            queueMessage.setMessage("Channel has aldready subbed. lol");
+            addMessage(queueMessage);
+        } else {
+            pusherHelper.subscribe(channel, null);
+        }
+    }
+
     private void submitChannel() {
         new LogTask("submitBundle", TAB, LogTask.LOG_I);
         try {
@@ -363,20 +393,13 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
                 return;
             } else {
                 Channel mchannel = new Channel(getChannelString());
-                // subcribeChannel(mchannel, mEvent);
-                if (pusherHelper.isSubcribed(mchannel)) {
-                    QueueMessage queueMessage = new QueueMessage();
-                    queueMessage.setMessage("Channel has aldready subbed. lol");
-                    addMessage(queueMessage);
-                } else {
-                    pusherHelper.subscribe(mchannel, null);
-                }
-
+                subcribeChannel(mchannel);
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
+
 
     private void subscriptionSucceeded(String channelName) {
         QueueMessage queueMessage = new QueueMessage();
@@ -427,11 +450,6 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
 
     private void connect(String appid, String cluster) {
         pusherHelper.connect(appid, cluster);
-    }
-
-    private void subcribeAllChannels(final Channel mChannel, Channel.Event mEvent) throws Exception {
-        ChannelStack.getInstance().add(mChannel);
-        pusherHelper.connectToPusherClient(null);
     }
 
     private void writeValueToPref(String value, String key) {
@@ -499,6 +517,11 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
     @Override
     public void onChannelButtonClick(Channel channel) {
         showDialog(channel);
+    }
+
+    @Override
+    public void onChannelButtonLongClick(Channel channel) {
+        subcribeChannel(channel);
     }
 
     void showDialog(Channel channel) {
@@ -603,6 +626,11 @@ public class ConfigurationActivity extends BaseActivity implements BaseChannelAd
                 }
                 break;
         }
+
+    }
+
+    @Override
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
 
     }
 

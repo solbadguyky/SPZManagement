@@ -3,6 +3,9 @@
 <group
     android:id="@+id/group_menu_pusher">
     <item
+        android:id="@+id/menu_run_in_background"
+        android:title="Run in background" />
+    <item
         android:id="@+id/menu_log"
         android:title="View Log" />
     <item
